@@ -1,0 +1,22 @@
+{
+  "name": "LSDJS",
+  "version": "0.1",
+  "description": "A Javascript library for visual odometry on browsers",
+  "main": "LSDSLAM.js",
+  "browser": "./dist/lsdvo.min.js",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "LSDSLAM"
+  ],
+  "author": "3fffff",
+  "license": "",
+  "devDependencies": {
+    "ts-loader": "^6.0.2",
+    "tslint": "^5.17.0",
+    "webpack": "^4.41.0",
+    "webpack-cli": "^3.3.9"
+  }
+}

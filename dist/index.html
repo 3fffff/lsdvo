@@ -1,0 +1,78 @@
+<html>
+
+<head>
+</head>
+
+<body>
+    <input id="inputFile" type="file" multiple>
+    <canvas id="canvas"></canvas>
+</body>
+<script src='index.js'></script>
+<script>
+    const cnv = document.getElementById('canvas')
+    const ctx = document.getElementById('canvas').getContext('2d');
+    let isInitialized = false;
+    let imageSeqNumber = 0;
+    let lsd = new EntryPoint.LSDSLAM(true, true)
+    EntryPoint.Constants.debugDisplay = 0
+    EntryPoint.Constants.setK(685.720, 685.636, 630.858, 511.918);
+    let files = []
+
+    function newImageCallback(image, width, height) {
+        console.log("-------\nFrame " + imageSeqNumber + "\n-------");
+        // Increment image sequence number
+        imageSeqNumber++;
+        // need to initialize
+        if (!isInitialized) {
+            lsd.randomInit(image, width, height);
+            isInitialized = true;
+        } else if (isInitialized)
+            lsd.trackFrame(image, width, height);
+    }
+
+    function handleFileSelect(e) {
+        files = e.target.files;
+        console.log(files)
+        loadImg(...files)
+            .then((img) => timeout(img))
+            .catch(err => console.error(err));
+    }
+    const loadImg = (...paths) => Promise.all(paths.map(loadImage));
+
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            console.log(src)
+            const img = new Image();
+            img.addEventListener("load", () => resolve(img));
+            img.addEventListener("error", err => reject(err));
+            img.src = URL.createObjectURL(src);
+        });
+    };
+
+    async function timeout(img) {
+        for (let i = 0; i < img.length; i++) {
+            setTimeout(function () {
+                cnv.height = img[i].height
+                cnv.width = img[i].width
+                ctx.drawImage(img[i], 0, 0, img[i].width, img[i].height);
+                let idata = ctx.getImageData(0, 0, img[i].width, img[i].height)
+                let imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
+                let d = getGray(idata.data, idata.width, idata.height)
+                console.time("All")
+                newImageCallback(d, idata.width, idata.height)
+                console.timeEnd("All")
+            }, i, i)
+        }
+    }
+
+    document.getElementById("inputFile").addEventListener("change", handleFileSelect)
+
+    function getGray(dataAlp, w, h) {
+        let data = new Array(w * h);
+        for (let i = 0; i < w * h * 4; i += 4)
+            data[i / 4] = dataAlp[i + 0];
+        return data
+    }
+</script>
+
+</html>
