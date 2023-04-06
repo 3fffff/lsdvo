@@ -134,7 +134,7 @@ export class SE3 {
    */
   public mulEq(se3: SE3) {
     this.translation = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
-    this.rotation.matrix = Vec.multiplicar(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
+    this.rotation.matrix = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     this.assertNotNaN();
   }
 
@@ -145,7 +145,7 @@ export class SE3 {
    */
   public mul(se3: SE3): SE3 {
     let translation: Float32Array = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
-    let rotation: Float32Array = Vec.multiplicar(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
+    let rotation: Float32Array = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     return new SE3(new SO3(rotation), translation);
   }
 

@@ -123,7 +123,7 @@ export class Vec {
     for (let i: number = 0; i < vec7.length; i++)  matrix[row * vec7.length + i] = vec7[i];
   }
 
-  public static multiplicar(A: Float32Array, B: Float32Array, aRows: number, aColumns: number, bRows: number, bColumns: number): Float32Array {
+  public static multMatrix(A: Float32Array, B: Float32Array, aRows: number, aColumns: number, bRows: number, bColumns: number): Float32Array {
     if (aColumns !== bRows) throw new Error("A:Rows: " + aColumns + " did not match B:Columns " + bRows + ".");
     let C: Float32Array = new Float32Array(aRows * bColumns);
     for (let i: number = 0; i < aRows; i++)

@@ -159,49 +159,19 @@ export class Constants {
       }
     }
     keyframe.posData = posData
-    keyframe.posData.length = 1
-   // keyframe.inverseDepthLvl.length = 0
-   // keyframe.inverseDepthVarianceLvl.length = 0
+    //keyframe.posData.length = 1
+    // keyframe.inverseDepthLvl.length = 0
+    // keyframe.inverseDepthVarianceLvl.length = 0
   }
   static generateCameraPosePoints(keyframe: Frame): Float32Array[] {
-    let cameraPose: Array<SE3> = keyframe.trackedOnPoses;
     let cameraPoints: Float32Array[] = Array();
-    let pt: Float32Array;
-    let camSize: number = 0.03;
     let camToWorld: SIM3 = new SIM3()
 
-    // For KF, Plot the XYZ axis
-    // Center
-    pt = new Float32Array([0, 0, 0]);
+    let cameraPose: SE3 = keyframe.trackedOnPoses;
+    let pt = new Float32Array([cameraPose.translation[0], cameraPose.translation[1], cameraPose.translation[2]]);
     pt = camToWorld.mul(pt);
-    let c: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
-    cameraPoints.push(c);
-
-    // X
-    pt = new Float32Array([camSize, 0, 0]);
-    pt = camToWorld.mul(pt);
-    let x: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
-    cameraPoints.push(x);
-
-    // Y
-    pt = new Float32Array([0, camSize, 0]);
-    pt = camToWorld.mul(pt);
-    let y: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
-    cameraPoints.push(y);
-
-    // Z
-    pt = new Float32Array([0, 0, camSize]);
-    pt = camToWorld.mul(pt);
-    let z: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
-    cameraPoints.push(z);
-
-    for (let i = 0; i < cameraPose.length; i++) {
-      let se3: SE3 = cameraPose[i];
-      pt = new Float32Array([se3.translation[0], se3.translation[1], se3.translation[2]]);
-      pt = camToWorld.mul(pt);
-      let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
-      cameraPoints.push(point);
-    }
+    let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);
+    cameraPoints.push(point);
     return cameraPoints;
   }
 }

@@ -141,23 +141,18 @@ export class SE3Tracker {
             refToFrame = newRefToFrame;
 
             // Check for convergence
-            if (error / lastError > this.convergenceEps[level]) {
-              // Stop iteration
+            if (error / lastError > this.convergenceEps[level]) 
               iteration = this.maxItsPerLvl[level];
-            }
             lastError = error;
             lastResidual = error;
 
             // Update lambda
-            if (LM_lambda <= 0.2) {
-              LM_lambda = 0;
-            } else {
-              LM_lambda *= this.lambdaSuccessFac;
-            }
+            if (LM_lambda <= 0.2) LM_lambda = 0;
+            else  LM_lambda *= this.lambdaSuccessFac;
             break;
           } else {
             let incVecDot: number = Vec.dot(inc, inc);
-            if (!(incVecDot > this.stepSizeMin[level])) {
+            if (incVecDot < this.stepSizeMin[level]) {
               // Stop iteration
               iteration = this.maxItsPerLvl[level];
               // console.log("Step size below min");
@@ -177,13 +172,10 @@ export class SE3Tracker {
         * frame.height(Constants.SE3TRACKING_MIN_LEVEL)) > Constants.MIN_GOODPERALL_PIXEL
       && this.lastGoodCount / (this.lastGoodCount + this.lastBadCount) > Constants.MIN_GOODPERGOODBAD_PIXEL;
 
-    //if (this.trackingWasGood)
-    //	referenceFrame.numFramesTrackedOnThis++;
-
     let frameToRef: SE3 = SE3.inverse(refToFrame);
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
-    frame.trackedOnPoses.push(frameToRef)
+    frame.trackedOnPoses = frameToRef
     frame.kfID = referenceFrame.id
     frame.trackingParent = referenceFrame.thisToParent
     frame.thisToParent = new SIM3(frameToRef, 1)

@@ -26,7 +26,7 @@ export class Frame {
   public thisToParent: SIM3 = new SIM3();
   public kfID: number = 0;
   public trackingParent: SIM3 = new SIM3();
-  public trackedOnPoses: SE3[] = [];
+  public trackedOnPoses: SE3 = new SE3();
   public numMappablePixels = 0
   //point cloud
   public posData: Array<Float32Array>;
@@ -231,7 +231,7 @@ export class Frame {
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 
-    this.K_otherToThis_R = Vec.matrixMul(Vec.multiplicar(Constants.K[0], otherToThis.getRotationM(), 3, 3, 3, 3),
+    this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationM(), 3, 3, 3, 3),
       otherToThis.getScale());
     this.otherToThis_t = otherToThis.getTranslation();
     this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
