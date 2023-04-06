@@ -14,12 +14,17 @@ export class LSDSLAM {
   createNewKeyFrame = false;
   totalFrames: number = 0;
   mapping = true;
+  debug = true;
   keyframesAll: Frame[] = [];
   allFramePoses: SIM3[] = []
-  SLAMEnabled = true;
   lastTrackedPose: SIM3 = new SIM3();
   // PUSHED in tracking, READ & CLEARED in mapping
   unmappedTrackedFrames: Frame[] = [];
+
+  constructor(mapping: boolean, debug: boolean) {
+    this.mapping = mapping
+    this.debug = debug
+  }
 
   randomInit(image: Float32Array, width: number, height: number) {
     this.map = new DepthMap(width, height);
@@ -32,7 +37,7 @@ export class LSDSLAM {
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
     this.totalFrames++;
-    this.map.debugPlotDepthMap();
+    if (this.debug) this.map.debugPlotDepthMap();
     console.log("Done random initialization.");
   }
 
@@ -93,8 +98,6 @@ export class LSDSLAM {
         this.map.createKeyFrame(trackingNewFrame);
         this.currentKeyFrame = trackingNewFrame;
         this.unmappedTrackedFrames.length = 0;
-        // Display depth map!
-        this.map.debugPlotDepthMap();
         this.allFramePoses.push(trackingNewFrame.thisToParent);
         if (this.mapping) {
           this.keyframesAll.push(this.currentKeyFrame);
@@ -105,9 +108,6 @@ export class LSDSLAM {
         // ***Update key frame here***
         if (this.unmappedTrackedFrames.length > 0)
           this.map.updateKeyframe(this.unmappedTrackedFrames);
-
-        // Display depth map!
-        this.map.debugPlotDepthMap();
       }
     } else { // Tracking is not good
       console.log("Tracking was bad!");
@@ -121,6 +121,7 @@ export class LSDSLAM {
         console.log("map.invalidate");
       }
     }
+    if (this.debug) this.map.debugPlotDepthMap();
   }
 
   getRefFrameScore(distanceSquared: number, usage: number): number {
