@@ -1037,11 +1037,10 @@ export class DepthMap {
 
   copyDepthMapArray(): void {
     for (let i = 0; i < this.currentDepthMap.length; i++) {
-      if (this.currentDepthMap[i]) {
+      if (this.currentDepthMap[i])
         this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
-      } else {
+      else 
         console.log("no currentDepthMap")
-      }
     }
   }
 
@@ -1119,9 +1118,8 @@ export class DepthMap {
 
   // Regularize fill holes, regularize depth map, etc
   public finalizeKeyFrame(): void {
-    if (!this.isValid()) {
+    if (!this.isValid())
       console.log("Assertion failed!");
-    }
 
     this.regularizeDepthMapFillHoles();
 

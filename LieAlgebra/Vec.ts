@@ -4,7 +4,7 @@ export class Vec {
    */
   public static magnitude(vec: Float32Array): number {
     let magnitude: number = 0;
-    for (let i: number = 0; i < vec.length; i++) { magnitude += vec[i] * vec[i]; }
+    for (let i: number = 0; i < vec.length; i++) magnitude += vec[i] * vec[i];
     return Math.sqrt(magnitude);
   }
 

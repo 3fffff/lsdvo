@@ -3,6 +3,7 @@ import { SIM3 } from '../LieAlgebra/SIM3';
 import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothesis';
 import { Vec } from '../LieAlgebra/Vec';
 import { SE3 } from '../LieAlgebra/SE3';
+
 export class Frame {
   public isKF: boolean = false;
   _width: number = 0;
@@ -26,7 +27,7 @@ export class Frame {
   public thisToParent: SIM3 = new SIM3();
   public kfID: number = 0;
   public trackingParent: SIM3 = new SIM3();
-  public trackedOnPoses: SE3 = new SE3();
+  public frameToRef: SE3 = new SE3();
   public numMappablePixels = 0
   //point cloud
   public posData: Array<Float32Array>;
@@ -228,6 +229,7 @@ export class Frame {
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
   }
+
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 

@@ -167,7 +167,7 @@ export class Constants {
     let cameraPoints: Float32Array[] = Array();
     let camToWorld: SIM3 = new SIM3()
 
-    let cameraPose: SE3 = keyframe.trackedOnPoses;
+    let cameraPose: SE3 = keyframe.frameToRef;
     let pt = new Float32Array([cameraPose.translation[0], cameraPose.translation[1], cameraPose.translation[2]]);
     pt = camToWorld.mul(pt);
     let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2]]);

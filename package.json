@@ -2,14 +2,14 @@
   "name": "LSDJS",
   "version": "0.1",
   "description": "A Javascript library for visual odometry on browsers",
-  "main": "LSDSLAM.js",
+  "main": "LSDVO.js",
   "browser": "./dist/lsdvo.min.js",
   "repository": {
     "type": "git",
     "url": ""
   },
   "keywords": [
-    "LSDSLAM"
+    "LSDSVO"
   ],
   "author": "3fffff",
   "license": "",

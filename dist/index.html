@@ -13,9 +13,9 @@
     const ctx = document.getElementById('canvas').getContext('2d');
     let isInitialized = false;
     let imageSeqNumber = 0;
-    let lsd = new EntryPoint.LSDSLAM(true, true)
-    EntryPoint.Constants.debugDisplay = 0
-    EntryPoint.Constants.setK(685.720, 685.636, 630.858, 511.918);
+    let lsd = new LSD.LSDVO(true, true)
+    LSD.Constants.debugDisplay = 0
+    LSD.Constants.setK(685.720, 685.636, 630.858, 511.918);
     let files = []
 
     function newImageCallback(image, width, height) {

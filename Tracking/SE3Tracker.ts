@@ -175,7 +175,7 @@ export class SE3Tracker {
     let frameToRef: SE3 = SE3.inverse(refToFrame);
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
-    frame.trackedOnPoses = frameToRef
+    frame.frameToRef = frameToRef
     frame.kfID = referenceFrame.id
     frame.trackingParent = referenceFrame.thisToParent
     frame.thisToParent = new SIM3(frameToRef, 1)
@@ -234,11 +234,8 @@ export class SE3Tracker {
       let u: number = (warpedPoint[0] / warpedPoint[2]) * fx + cx;
       let v: number = (warpedPoint[1] / warpedPoint[2]) * fy + cy;
 
-      // Check image points within bounds
-      if (!(u > 1 && v > 1 && u < frame.width(level) - 2 && v < frame.height(level) - 2)) {
-        // Skip this pixel
-        continue;
-      }
+      // Check image points within bounds  for Skip this pixel
+      if (!(u > 1 && v > 1 && u < frame.width(level) - 2 && v < frame.height(level) - 2)) continue;
 
       // Interpolated intensity, gradient X,Y.
       let interpolatedIntensity: number = Vec.interpolatedValue(frame.imageArrayLvl[level], u, v,
@@ -358,7 +355,7 @@ export class SE3Tracker {
       let z: number = 1.0 / pz;
       let z_sqr: number = 1.0 / (pz * pz);
 
-      // Vector6
+      // Vector6 or Jacobian
       let v: Float32Array = new Float32Array([z * gx, z * gy, (-px * z_sqr) * gx + (-py * z_sqr) * gy,
       (-px * py * z_sqr) * gx + (-(1.0 + py * py * z_sqr)) * gy,
       (1.0 + px * px * z_sqr) * gx + (px * py * z_sqr) * gy, (-py * z) * gx + (px * z) * gy]);

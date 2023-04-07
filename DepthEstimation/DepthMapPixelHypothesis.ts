@@ -38,18 +38,29 @@ export class DepthMapPixelHypothesis {
 
   public idepth_var_smoothed: number = 0;
 
-  public constructor(idepth?: any, idepth_smoothed?: any, idepth_var?: any, idepth_var_smoothed?: any, validity_counter?: any) {
-    this.isValid = false;
-    this.blacklisted = 0;
-    this.idepth_smoothed = idepth_smoothed === undefined ? -1 : idepth_smoothed;
-    this.idepth_var_smoothed = idepth_var_smoothed === undefined ? -1 : idepth_var_smoothed;
-    if (typeof idepth === 'number') {
+
+  public constructor(idepth?: any, idepth_smoothed?: any, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
+    if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && ((typeof idepth_var_smoothed === 'number') || idepth_var_smoothed === null) && ((typeof my_validity_counter === 'number') || my_validity_counter === null)) {
       this.isValid = true;
       this.blacklisted = 0;
       this.nextStereoFrameMinID = 0;
-      this.validity_counter = validity_counter;
+      this.validity_counter = my_validity_counter;
       this.idepth = idepth;
       this.idepth_var = idepth_var;
+      this.idepth_smoothed = idepth_smoothed;
+      this.idepth_var_smoothed = idepth_var_smoothed;
+    } else if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && idepth_var_smoothed === undefined && my_validity_counter === undefined) {
+      let __args = arguments;
+      let idepth_var: any = __args[1];
+      let my_validity_counter: any = __args[2];
+      this.isValid = true;
+      this.blacklisted = 0;
+      this.nextStereoFrameMinID = 0;
+      this.validity_counter = my_validity_counter;
+      this.idepth = idepth;
+      this.idepth_var = idepth_var;
+      this.idepth_smoothed = -1;
+      this.idepth_var_smoothed = -1;
     } else if (idepth instanceof DepthMapPixelHypothesis) {
       this.isValid = idepth.isValid;
       this.blacklisted = idepth.blacklisted;
@@ -59,7 +70,10 @@ export class DepthMapPixelHypothesis {
       this.idepth_var = idepth.idepth_var;
       this.idepth_smoothed = idepth.idepth_smoothed;
       this.idepth_var_smoothed = idepth.idepth_var_smoothed;
-    }
+    } else{
+      this.isValid = false;
+      this.blacklisted = 0;
+    } 
   }
 
   getVisualizationColor(lastFrameID: number): Float32Array {
