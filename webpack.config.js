@@ -1,7 +1,9 @@
 module.exports = {
-    entry: './index.js',
-    output: {
-      filename: 'dist/index.js'
-    }
-  };
-  
+  entry: {
+    EntryPoint: './index.js'
+  },
+  output: {
+    filename: 'index.js',
+    library: "LSD",
+  }
+};
