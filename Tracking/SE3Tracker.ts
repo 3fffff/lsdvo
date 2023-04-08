@@ -45,7 +45,6 @@ export class SE3Tracker {
   calculateResidualAndBuffersCount: number = 0;
 
   constructor(width: number, height: number) {
-
     // Set lambdaInitial values to 0
     this.lambdaInitial = new Float32Array(Constants.PYRAMID_LEVELS);
     // Set convergence epsilon
@@ -141,18 +140,23 @@ export class SE3Tracker {
             refToFrame = newRefToFrame;
 
             // Check for convergence
-            if (error / lastError > this.convergenceEps[level]) 
+            if (error / lastError > this.convergenceEps[level]) {
+              // Stop iteration
               iteration = this.maxItsPerLvl[level];
+            }
             lastError = error;
             lastResidual = error;
 
             // Update lambda
-            if (LM_lambda <= 0.2) LM_lambda = 0;
-            else  LM_lambda *= this.lambdaSuccessFac;
+            if (LM_lambda <= 0.2) {
+              LM_lambda = 0;
+            } else {
+              LM_lambda *= this.lambdaSuccessFac;
+            }
             break;
           } else {
             let incVecDot: number = Vec.dot(inc, inc);
-            if (incVecDot < this.stepSizeMin[level]) {
+            if (!(incVecDot > this.stepSizeMin[level])) {
               // Stop iteration
               iteration = this.maxItsPerLvl[level];
               // console.log("Step size below min");
@@ -172,13 +176,19 @@ export class SE3Tracker {
         * frame.height(Constants.SE3TRACKING_MIN_LEVEL)) > Constants.MIN_GOODPERALL_PIXEL
       && this.lastGoodCount / (this.lastGoodCount + this.lastBadCount) > Constants.MIN_GOODPERGOODBAD_PIXEL;
 
+    if (this.trackingWasGood)
+      referenceFrame.numFramesTrackedOnThis++;
+
     let frameToRef: SE3 = SE3.inverse(refToFrame);
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
-    frame.frameToRef = frameToRef
-    frame.kfID = referenceFrame.id
-    frame.trackingParent = referenceFrame.thisToParent
-    frame.thisToParent = new SIM3(frameToRef, 1)
+    frame.thisToParent_raw = new SIM3(frameToRef, 1.0);
+    frame.refcamToWorld = referenceFrame.camToWorld;
+    frame.kfID = referenceFrame.id;
+
+    // Add frameToRef to reference frame
+    referenceFrame.trackedOnPoses.push(frameToRef);
+
     console.log("Final frameToRef: " + SE3.ln(frameToRef));
 
     return frameToRef;
@@ -194,9 +204,11 @@ export class SE3Tracker {
 
   /**
    * Calculate residual and buffers
+   * 
    * @return sum of un-weighted residuals, divided by good pixel count.
+   *
    */
-  calculateResidualAndBuffers(posData: Float32Array[], colorAndVarData: Float32Array[], frame: Frame,
+  calculateResidualAndBuffers(posData: Array<Float32Array>, colorAndVarData: Array<Float32Array>, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
     this.calculateResidualAndBuffersCount++;
@@ -234,8 +246,11 @@ export class SE3Tracker {
       let u: number = (warpedPoint[0] / warpedPoint[2]) * fx + cx;
       let v: number = (warpedPoint[1] / warpedPoint[2]) * fy + cy;
 
-      // Check image points within bounds  for Skip this pixel
-      if (!(u > 1 && v > 1 && u < frame.width(level) - 2 && v < frame.height(level) - 2)) continue;
+      // Check image points within bounds
+      if (!(u > 1 && v > 1 && u < frame.width(level) - 2 && v < frame.height(level) - 2)) {
+        // Skip this pixel
+        continue;
+      }
 
       // Interpolated intensity, gradient X,Y.
       let interpolatedIntensity: number = Vec.interpolatedValue(frame.imageArrayLvl[level], u, v,
@@ -337,7 +352,7 @@ export class SE3Tracker {
    * @param ls
    */
   calculateWarpUpdate(ls: LGS6): void {
-    ls.initialize()
+    ls.initialize();
     // For each warped pixel
     for (let i = 0; i < this.warpedCount; i++) {
 
@@ -355,7 +370,7 @@ export class SE3Tracker {
       let z: number = 1.0 / pz;
       let z_sqr: number = 1.0 / (pz * pz);
 
-      // Vector6 or Jacobian
+      // Vector6
       let v: Float32Array = new Float32Array([z * gx, z * gy, (-px * z_sqr) * gx + (-py * z_sqr) * gy,
       (-px * py * z_sqr) * gx + (-(1.0 + py * py * z_sqr)) * gy,
       (1.0 + px * px * z_sqr) * gx + (px * py * z_sqr) * gy, (-py * z) * gx + (px * z) * gy]);

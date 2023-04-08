@@ -1,78 +1,87 @@
-import { Constants } from "./Utils/Constants";
 import { Frame } from "./DataStructures/Frame";
-import { DepthMap } from "./DepthEstimation/DepthMap";
-import { SE3 } from "./LieAlgebra/SE3";
-import { SIM3 } from "./LieAlgebra/SIM3";
 import { SE3Tracker } from "./Tracking/SE3Tracker";
+import { DepthMap } from "./DepthEstimation/DepthMap";
+import { Constants } from "./Utils/Constants";
+import { SE3 } from "./LieAlgebra/SE3";
 import { Vec } from "./LieAlgebra/Vec";
 
 export class LSDVO {
 
   currentKeyFrame: Frame;
   map: DepthMap;
-  tracker: SE3Tracker;
-  createNewKeyFrame = false;
-  totalFrames: number = 0;
-  mapping = true;
-  debug = true;
-  keyframesAll: Frame[] = [];
-  allFramePoses: SIM3[] = []
-  lastTrackedPose: SIM3 = new SIM3();
+
+  createNewKeyFrame: boolean = false;
+  trackingIsGood: boolean = true;
+
+  keyframesAll: Frame[];
+  numkeyframes: number = 0
+  mapping: boolean = false;
+
   // PUSHED in tracking, READ & CLEARED in mapping
   unmappedTrackedFrames: Frame[] = [];
-
-  constructor(mapping: boolean, debug: boolean) {
-    this.mapping = mapping
+  keyFrameCtx: CanvasRenderingContext2D;
+  GradCtx: CanvasRenderingContext2D;
+  debug: boolean = true;
+  constructor(mapping: boolean, keyFrameCtx: CanvasRenderingContext2D, GradCtx: CanvasRenderingContext2D, debug: boolean) {
+    this.keyFrameCtx = keyFrameCtx;
+    this.GradCtx = GradCtx;
     this.debug = debug
+    this.mapping = mapping
+    if (this.mapping) this.keyframesAll = [];
   }
 
-  randomInit(image: Float32Array, width: number, height: number) {
+  randomInit(image: Float32Array, width: number, height: number): void {
     this.map = new DepthMap(width, height);
-    this.tracker = new SE3Tracker(width, height);
-
     // New currentKeyframe
-    this.currentKeyFrame = new Frame(image, width, height, this.totalFrames);
+    this.currentKeyFrame = new Frame(image, width, height);
     this.currentKeyFrame.isKF = true;
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    this.totalFrames++;
-    if (this.debug) this.map.debugPlotDepthMap();
+    if (this.debug)
+      this.map.debugPlotDepthMap(this.keyFrameCtx, this.GradCtx, 1);
     console.log("Done random initialization.");
   }
 
-  trackFrame(image: Float32Array, width: number, height: number) {
+  trackFrame(image: Float32Array, width: number, height: number): void {
 
-    let trackingNewFrame: Frame = new Frame(image, width, height, this.totalFrames);
+    let trackingNewFrame: Frame = new Frame(image, width, height);
+    let tracker = new SE3Tracker(width, height);
+    // Set tracking reference to be the currentKeyFrame
+    //this.currentKeyFrame.depthHasBeenUpdatedFlag = false;
 
-    let frameToReference_initialEstimate: SE3 = this.getFrameInitialEstimate();
-    console.log("frameToReference_initialEstimate: " + SE3.ln(frameToReference_initialEstimate));
-
-    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
-      frameToReference_initialEstimate);
-
-    this.lastTrackedPose = trackingNewFrame.thisToParent;
-    if (this.tracker.diverged || (this.totalFrames > Constants.INITIALIZATION_PHASE_COUNT && !this.tracker.trackingWasGood)) {
-      console.log("keyframesAll.size(): " + this.totalFrames);
-      console.log("tracker.trackingWasGood: " + this.tracker.trackingWasGood);
-      console.log("tracker.diverged: " + this.tracker.diverged);
-      return;
+    let frameToReference_initialEstimate: SE3 = new SE3();
+    if (this.currentKeyFrame.trackedOnPoses.length > 0) {
+      frameToReference_initialEstimate = this.currentKeyFrame.trackedOnPoses
+      [this.currentKeyFrame.trackedOnPoses.length - 1];
     }
 
-    this.totalFrames++;
-    this.createNewKeyFrame = false;
+    console.time("track")
+    let newRefToFrame_poseUpdate: SE3 = tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
+      frameToReference_initialEstimate);
+    console.timeEnd("track")
+    console.log("lastGoodCount " + tracker.lastGoodCount);
+    console.log("lastBadCount " + tracker.lastBadCount);
+    if (this.debug) this.map.debugPlotDepthMap(this.keyFrameCtx, this.GradCtx, 1);
+    if (Constants.manualTrackingLossIndicated || tracker.diverged
+      || (this.numkeyframes > Constants.INITIALIZATION_PHASE_COUNT && !tracker.trackingWasGood)) {
+      console.log("numkeyframes: " + this.numkeyframes);
+      console.log("tracker.trackingWasGood: " + tracker.trackingWasGood);
+      console.log("tracker.diverged: " + tracker.diverged);
+      console.log("size: "
+        + (trackingNewFrame.width(Constants.SE3TRACKING_MIN_LEVEL) * trackingNewFrame.height(Constants.SE3TRACKING_MIN_LEVEL)));
+      this.trackingIsGood = false;
+      return;
+    }
     // Keyframe selection
-
-    if (this.currentKeyFrame.numMappedOnThisTotal > Constants.MIN_NUM_MAPPED) {
+    if (!this.createNewKeyFrame && this.currentKeyFrame.numMappedOnThisTotal > Constants.MIN_NUM_MAPPED) {
 
       let dist: Float32Array = Vec.scalarMult2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
-      let minVal: number = Math.min(0.2 + this.totalFrames * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
-
-      if (this.totalFrames < Constants.INITIALIZATION_PHASE_COUNT)
+      let minVal: number = Math.min(0.2 + this.numkeyframes * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
+      if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
 
-      let lastTrackingClosenessScore: number = this.getRefFrameScore(Vec.dot(dist, dist), this.tracker.pointUsage);
-
+      const lastTrackingClosenessScore = this.getRefFrameScore(Vec.dot(dist, dist), tracker.pointUsage);
       if (lastTrackingClosenessScore > minVal) {
         console.log("CREATE NEW KEYFRAME");
         this.createNewKeyFrame = true;
@@ -81,62 +90,73 @@ export class LSDVO {
     }
     // Push into deque for mapping
     this.unmappedTrackedFrames.push(trackingNewFrame);
-    this.doMappingIteration(trackingNewFrame);
+    this.doMappingIteration(trackingNewFrame)
   }
 
-  doMappingIteration(trackingNewFrame: Frame) {
-    if (this.currentKeyFrame == null)
+  doMappingIteration(trackingNewFrame: Frame): void | null {
+    if (this.currentKeyFrame == null) {
       console.log("doMappingIteration: currentKeyFrame is null!");
-
+      return;
+    }
     // set mappingFrame
-    if (this.tracker.trackingWasGood) {
-      console.log("Tracking was good!");
-      if (this.createNewKeyFrame) {
-        this.map.finalizeKeyFrame();
-        console.log("CREATE NEW KF %d from %d\n", trackingNewFrame.id, this.currentKeyFrame.id);
-        // propagate & make new.
-        this.map.createKeyFrame(trackingNewFrame);
-        this.currentKeyFrame = trackingNewFrame;
-        this.unmappedTrackedFrames.length = 0;
-        this.allFramePoses.push(trackingNewFrame.thisToParent);
-        if (this.mapping) {
-          this.keyframesAll.push(this.currentKeyFrame);
+    if (this.trackingIsGood && this.createNewKeyFrame) {
+      console.log("doMappingIteration: create new keyframe");
+      // create new key frame
+      this.finishCurrentKeyframe();
+      this.createNewCurrentKeyframe(trackingNewFrame);
+      if (this.mapping) {
+        try {
           Constants.writePointCloudToFile(this.keyframesAll);
+        } catch (e) {
+          console.log(e)
         }
-      } else {
-        console.log("doMappingIteration: update keyframe");
-        // ***Update key frame here***
-        if (this.unmappedTrackedFrames.length > 0)
-          this.map.updateKeyframe(this.unmappedTrackedFrames);
       }
-    } else { // Tracking is not good
+      return
+    } else if (!this.trackingIsGood) { // Tracking is not good
       console.log("Tracking was bad!");
-
-      // invalidate map if it was valid.
+      this.trackingIsGood = true
       if (this.map.isValid()) {
-        if (this.currentKeyFrame.numMappedOnThisTotal >= Constants.MIN_NUM_MAPPED) {
-          console.log("FINALIZING KF: " + this.currentKeyFrame.id);
-          this.map.finalizeKeyFrame();
-        }
-        console.log("map.invalidate");
+        if (this.currentKeyFrame.numMappedOnThisTotal >= Constants.MIN_NUM_MAPPED)
+          console.log("map.invalidate");
+        this.finishCurrentKeyframe();
       }
     }
-    if (this.debug) this.map.debugPlotDepthMap();
+    this.updateKeyframe();
+  }
+
+  // Updates key frame with measurements from a new frame.
+  updateKeyframe(): void {
+    // clone list
+    if (this.unmappedTrackedFrames.length > 0) {
+      // Copy from unmappedTrackedFrames to references
+      // references - list of frames to map
+      console.time("updatekeyframe")
+      //	this.unmappedTrackedFrames[0]._refPixelWasGood=null
+      this.map.updateKeyframe(this.unmappedTrackedFrames);
+      console.timeEnd("updatekeyframe")
+      this.unmappedTrackedFrames.length = 0
+    } else console.log("updateKeyFrame: false");
+  }
+
+  finishCurrentKeyframe(): void {
+    console.log("FINALIZING KF: " + this.currentKeyFrame.id);
+    this.map.finalizeKeyFrame();
+    this.numkeyframes++
+    if (this.mapping) {
+      this.currentKeyFrame.camToWorld = this.currentKeyFrame.getScaledCamToWorld()
+      this.currentKeyFrame.clearData();
+      this.keyframesAll.push(this.currentKeyFrame);
+    }
+  }
+
+  createNewCurrentKeyframe(newKeyframeCandidate: Frame): void {
+    console.log("CREATE NEW KF %d from %d\n", newKeyframeCandidate.id, this.currentKeyFrame.id);
+    this.createNewKeyFrame = false;
+    this.map.createKeyFrame(newKeyframeCandidate);
+    this.currentKeyFrame = newKeyframeCandidate;
   }
 
   getRefFrameScore(distanceSquared: number, usage: number): number {
-    return distanceSquared * 3 * 4 + (1 - usage) * (1 - usage) * 3 * 4;
-  }
-
-  getFrameInitialEstimate(): SE3 {
-    let camToWorld: SIM3 = new SIM3();
-    let camToWorldR: SIM3 = new SIM3();
-
-    let lastCount: number = this.createNewKeyFrame ? 1 : 0;
-    for (let i: number = 0; i < this.allFramePoses.length - lastCount; i++)
-      camToWorldR = camToWorldR.mul(this.allFramePoses[i]);
-    for (let i: number = 0; i < this.allFramePoses.length; i++)
-      camToWorld = camToWorld.mul(this.allFramePoses[i]);
-    return camToWorld.getSE3().inverse().mul(camToWorldR.mul(this.lastTrackedPose).getSE3());
+    return distanceSquared * 12 + (1 - usage) * (1 - usage) * 12;
   }
 }

@@ -196,8 +196,8 @@ export class Vec {
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {
-    let ix: number = Math.floor(x | 0);
-    let iy: number = Math.floor(y | 0);
+    let ix: number = Math.floor(x);
+    let iy: number = Math.floor(y);
     let dx: number = x - ix;
     let dy: number = y - iy;
     let dxdy: number = dx * dy;

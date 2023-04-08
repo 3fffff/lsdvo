@@ -14,21 +14,28 @@ export class Frame {
   public imageGradientMaxArrayLvl: Array<Float32Array>;
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
+  public hasIDepthBeenSet: boolean = false;
   public depthHasBeenUpdatedFlag: boolean = false;
-  public id: number = 0;
+  _refPixelWasGood: boolean[] | null;
+  static totalFrames: number = 0;
+  public numMappablePixels = 0
+  id: number = 0;
   public K_otherToThis_R: Float32Array;
   public K_otherToThis_t: Float32Array;
   public otherToThis_t: Float32Array;
   thisToOther_R: Float32Array;
   thisToOther_t: Float32Array;
   public initialTrackedResidual: number = 0;
+  public numFramesTrackedOnThis: number = 0;
+  public numMappedOnThis: number = 0;
   public numMappedOnThisTotal: number = 0;
   public meanIdepth: number = 0;
-  public thisToParent: SIM3 = new SIM3();
+  public numPoints: number = 0;
+  public camToWorld: SIM3;
+  public refcamToWorld: SIM3;
+  public thisToParent_raw: SIM3;
   public kfID: number = 0;
-  public trackingParent: SIM3 = new SIM3();
-  public frameToRef: SE3 = new SE3();
-  public numMappablePixels = 0
+  public trackedOnPoses: SE3[] = [];
   //point cloud
   public posData: Array<Float32Array>;
   public colorAndVarData: Array<Float32Array>;
@@ -37,20 +44,27 @@ export class Frame {
    * Clear unused data to reduce memory usage
    */
   public clearData() {
+    this.imageArrayLvl.length = 0;
     this.imageGradientXArrayLvl.length = 0;
     this.imageGradientYArrayLvl.length = 0;
     this.imageGradientMaxArrayLvl.length = 0;
+    this._refPixelWasGood = null;
+    /*this.K_otherToThis_R.length = 0;
+    this.K_otherToThis_t.length = 0;
+    this.otherToThis_t.length = 0;
+    this.thisToOther_R.length = 0;
+    this.thisToOther_t.length = 0;*/
     this.colorAndVarData.length = 0
-    this.imageArrayLvl.length = 0;
-    this.inverseDepthLvl.length = 0;
-    this.inverseDepthVarianceLvl.length = 0;
-    if (!this.isKF) this.posData.length = 0
+    if (!this.isKF) {
+      this.inverseDepthLvl.length = 0;
+      this.inverseDepthVarianceLvl.length = 0;
+    }
   }
 
-  public constructor(image: Float32Array, width: number, height: number, totalFrames: number) {
+  public constructor(image: Float32Array, width: number, height: number) {
     this._width = width;
     this._height = height;
-    this.id = totalFrames;
+    this.id = Frame.totalFrames++;
     this.imageArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientXArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientYArrayLvl = Array(Constants.PYRAMID_LEVELS);
@@ -132,7 +146,7 @@ export class Frame {
   }
 
   public setDepth(newDepth: Array<DepthMapPixelHypothesis>): void {
-    if (this.depthHasBeenUpdatedFlag) return;
+
     let numIdepth: number = 0;
     let sumIdepth: number = 0;
 
@@ -156,12 +170,15 @@ export class Frame {
     }
 
     this.meanIdepth = sumIdepth / numIdepth;
+    this.numPoints = numIdepth;
 
+    this.hasIDepthBeenSet = true;
     this.depthHasBeenUpdatedFlag = true;
 
     // Do lower levels
     for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
       this.buildIDepthAndIDepthVar(level);
+
   }
 
   buildIDepthAndIDepthVar(level: number) {
@@ -221,7 +238,7 @@ export class Frame {
     }
   }
 
-  buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number) {
+  buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number)  {
     let width: number = this.width(level - 1);
     let height: number = this.height(level - 1);
     let dstIdx: number = 0;
@@ -229,7 +246,6 @@ export class Frame {
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
   }
-
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 
@@ -240,13 +256,18 @@ export class Frame {
 
     this.thisToOther_t = thisToOther.getTranslation();
     this.thisToOther_R = Vec.matrixMul(thisToOther.getRotationM(), thisToOther.getScale());
-
   }
 
   public getScaledCamToWorld(): SIM3 {
-    return this.thisToParent.mul(this.trackingParent);
+    if (!this.refcamToWorld)
+      return this.refcamToWorld = new SIM3();
+    return this.camToWorld = this.refcamToWorld.mul(this.thisToParent_raw);
   }
 
+  /**
+   * Create 3D points from inverse depth values
+   * @param {number} level
+   */
   public createPointCloud(level: number) {
     let width: number = this.width(level);
     let height: number = this.height(level);

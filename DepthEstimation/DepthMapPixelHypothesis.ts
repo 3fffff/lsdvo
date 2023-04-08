@@ -70,10 +70,10 @@ export class DepthMapPixelHypothesis {
       this.idepth_var = idepth.idepth_var;
       this.idepth_smoothed = idepth.idepth_smoothed;
       this.idepth_var_smoothed = idepth.idepth_var_smoothed;
-    } else{
+    } else {
       this.isValid = false;
       this.blacklisted = 0;
-    } 
+    }
   }
 
   getVisualizationColor(lastFrameID: number): Float32Array {
