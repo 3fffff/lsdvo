@@ -39,7 +39,7 @@ export class LSDVO {
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
     if (this.debug)
-      this.map.debugPlotDepthMap(this.keyFrameCtx, this.GradCtx, 1);
+      this.map.debugPlotDepthMap();
     console.log("Done random initialization.");
   }
 
@@ -62,7 +62,7 @@ export class LSDVO {
     console.timeEnd("track")
     console.log("lastGoodCount " + tracker.lastGoodCount);
     console.log("lastBadCount " + tracker.lastBadCount);
-    if (this.debug) this.map.debugPlotDepthMap(this.keyFrameCtx, this.GradCtx, 1);
+    if (this.debug) this.map.debugPlotDepthMap();
     if (Constants.manualTrackingLossIndicated || tracker.diverged
       || (this.numkeyframes > Constants.INITIALIZATION_PHASE_COUNT && !tracker.trackingWasGood)) {
       console.log("numkeyframes: " + this.numkeyframes);
@@ -144,7 +144,7 @@ export class LSDVO {
     this.numkeyframes++
     if (this.mapping) {
       this.currentKeyFrame.camToWorld = this.currentKeyFrame.getScaledCamToWorld()
-      this.currentKeyFrame.clearData();
+      //this.currentKeyFrame.clearData();
       this.keyframesAll.push(this.currentKeyFrame);
     }
   }
