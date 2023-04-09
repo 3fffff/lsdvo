@@ -11,20 +11,16 @@ export class LSDVO {
   map: DepthMap;
 
   createNewKeyFrame: boolean = false;
-  trackingIsGood: boolean = true;
 
   keyframesAll: Frame[];
+  tracker: SE3Tracker
   numkeyframes: number = 0
   mapping: boolean = false;
 
   // PUSHED in tracking, READ & CLEARED in mapping
   unmappedTrackedFrames: Frame[] = [];
-  keyFrameCtx: CanvasRenderingContext2D;
-  GradCtx: CanvasRenderingContext2D;
   debug: boolean = true;
-  constructor(mapping: boolean, keyFrameCtx: CanvasRenderingContext2D, GradCtx: CanvasRenderingContext2D, debug: boolean) {
-    this.keyFrameCtx = keyFrameCtx;
-    this.GradCtx = GradCtx;
+  constructor(mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
     if (this.mapping) this.keyframesAll = [];
@@ -32,45 +28,32 @@ export class LSDVO {
 
   randomInit(image: Float32Array, width: number, height: number): void {
     this.map = new DepthMap(width, height);
+    this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
     this.currentKeyFrame = new Frame(image, width, height);
     this.currentKeyFrame.isKF = true;
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.debug)
-      this.map.debugPlotDepthMap();
+    if (this.debug) this.map.debugPlotDepthMap();
     console.log("Done random initialization.");
   }
 
   trackFrame(image: Float32Array, width: number, height: number): void {
-
     let trackingNewFrame: Frame = new Frame(image, width, height);
-    let tracker = new SE3Tracker(width, height);
-    // Set tracking reference to be the currentKeyFrame
-    //this.currentKeyFrame.depthHasBeenUpdatedFlag = false;
 
-    let frameToReference_initialEstimate: SE3 = new SE3();
-    if (this.currentKeyFrame.trackedOnPoses.length > 0) {
-      frameToReference_initialEstimate = this.currentKeyFrame.trackedOnPoses
-      [this.currentKeyFrame.trackedOnPoses.length - 1];
-    }
+    let frameToReference_initialEstimate: SE3 = this.currentKeyFrame.trackedOnPoses.length > 0 ? this.currentKeyFrame.trackedOnPoses
+    [this.currentKeyFrame.trackedOnPoses.length - 1] : new SE3();
 
     console.time("track")
-    let newRefToFrame_poseUpdate: SE3 = tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
+    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
       frameToReference_initialEstimate);
     console.timeEnd("track")
-    console.log("lastGoodCount " + tracker.lastGoodCount);
-    console.log("lastBadCount " + tracker.lastBadCount);
+    console.log("lastGoodCount " + this.tracker.lastGoodCount);
+    console.log("lastBadCount " + this.tracker.lastBadCount);
     if (this.debug) this.map.debugPlotDepthMap();
-    if (Constants.manualTrackingLossIndicated || tracker.diverged
-      || (this.numkeyframes > Constants.INITIALIZATION_PHASE_COUNT && !tracker.trackingWasGood)) {
-      console.log("numkeyframes: " + this.numkeyframes);
-      console.log("tracker.trackingWasGood: " + tracker.trackingWasGood);
-      console.log("tracker.diverged: " + tracker.diverged);
-      console.log("size: "
-        + (trackingNewFrame.width(Constants.SE3TRACKING_MIN_LEVEL) * trackingNewFrame.height(Constants.SE3TRACKING_MIN_LEVEL)));
-      this.trackingIsGood = false;
+    if (this.tracker.diverged || (this.numkeyframes > Constants.INITIALIZATION_PHASE_COUNT && !this.tracker.trackingWasGood)) {
+      console.log("tracker.diverged: " + this.tracker.diverged);
       return;
     }
     // Keyframe selection
@@ -81,8 +64,7 @@ export class LSDVO {
       if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
 
-      const lastTrackingClosenessScore = this.getRefFrameScore(Vec.dot(dist, dist), tracker.pointUsage);
-      if (lastTrackingClosenessScore > minVal) {
+      if (this.getRefFrameScore(Vec.dot(dist, dist), this.tracker.pointUsage) > minVal) {
         console.log("CREATE NEW KEYFRAME");
         this.createNewKeyFrame = true;
         trackingNewFrame.isKF = true;
@@ -99,7 +81,7 @@ export class LSDVO {
       return;
     }
     // set mappingFrame
-    if (this.trackingIsGood && this.createNewKeyFrame) {
+    if (this.tracker.trackingWasGood&& this.createNewKeyFrame) {
       console.log("doMappingIteration: create new keyframe");
       // create new key frame
       this.finishCurrentKeyframe();
@@ -112,9 +94,8 @@ export class LSDVO {
         }
       }
       return
-    } else if (!this.trackingIsGood) { // Tracking is not good
+    } else if (!this.tracker.trackingWasGood) { // Tracking is not good
       console.log("Tracking was bad!");
-      this.trackingIsGood = true
       if (this.map.isValid()) {
         if (this.currentKeyFrame.numMappedOnThisTotal >= Constants.MIN_NUM_MAPPED)
           console.log("map.invalidate");

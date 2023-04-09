@@ -17,19 +17,18 @@ export class SE3 {
       this.translation = se3.translation;
       this.rotation = new SO3(se3.rotation);
       this.assertNotNaN();
-    } else if (rotation === undefined && translation === undefined) {
-
+    } else{
       this.rotation = new SO3();
       this.setTranslation3(0, 0, 0);
       this.assertNotNaN();
-    } else throw new Error('invalid overload');
+    }
   }
 
   public getRotation(): SO3 {
     return this.rotation;
   }
 
-  public getRotationM(): Float32Array {
+  public getRotationMatrix(): Float32Array {
     return this.rotation.matrix;
   }
 
@@ -101,7 +100,7 @@ export class SE3 {
   public static inverse(se3: SE3): SE3 {
     let inverse: SE3 = new SE3();
     inverse.rotation = SO3.inverse(se3.rotation);
-    inverse.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationM(), se3.translation, 3)), -1);
+    inverse.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), se3.translation, 3)), -1);
     inverse.assertNotNaN();
     return inverse;
   }

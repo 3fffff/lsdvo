@@ -11,9 +11,9 @@ export class SO3 {
       let __args = arguments;
       let rotation: any = __args[0];
       this.matrix = rotation.matrix;
-    } else if (mat33 === undefined) {
+    } else {
       this.matrix = Vec.matrixEye(3);
-    } else throw new Error('invalid overload');
+    }
   }
 
   public set31(vec3: Float32Array) {

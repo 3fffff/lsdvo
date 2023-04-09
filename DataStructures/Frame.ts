@@ -33,7 +33,7 @@ export class Frame {
   public numPoints: number = 0;
   public camToWorld: SIM3;
   public refcamToWorld: SIM3;
-  public thisToParent_raw: SIM3;
+  public thisToParent: SIM3;
   public kfID: number = 0;
   public trackedOnPoses: SE3[] = [];
   //point cloud
@@ -238,7 +238,7 @@ export class Frame {
     }
   }
 
-  buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number)  {
+  buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number) {
     let width: number = this.width(level - 1);
     let height: number = this.height(level - 1);
     let dstIdx: number = 0;
@@ -249,24 +249,22 @@ export class Frame {
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 
-    this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationM(), 3, 3, 3, 3),
+    this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
       otherToThis.getScale());
     this.otherToThis_t = otherToThis.getTranslation();
     this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
 
     this.thisToOther_t = thisToOther.getTranslation();
-    this.thisToOther_R = Vec.matrixMul(thisToOther.getRotationM(), thisToOther.getScale());
+    this.thisToOther_R = Vec.matrixMul(thisToOther.getRotationMatrix(), thisToOther.getScale());
   }
 
   public getScaledCamToWorld(): SIM3 {
-    if (!this.refcamToWorld)
-      return this.refcamToWorld = new SIM3();
-    return this.camToWorld = this.refcamToWorld.mul(this.thisToParent_raw);
+    if (!this.refcamToWorld) return this.refcamToWorld = new SIM3();
+    return this.camToWorld = this.refcamToWorld.mul(this.thisToParent);
   }
 
   /**
    * Create 3D points from inverse depth values
-   * @param {number} level
    */
   public createPointCloud(level: number) {
     let width: number = this.width(level);

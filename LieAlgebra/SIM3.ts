@@ -18,11 +18,11 @@ export class SIM3 {
       this.se3 = new SE3(sim3.se3);
       this.scale = sim3.scale;
       this.assertNotNaN();
-    } else if (se3 === undefined && scale === undefined) {
+    } else {
       this.se3 = new SE3();
       this.scale = 1;
       this.assertNotNaN();
-    } else throw new Error('invalid overload');
+    }
   }
 
   public getSE3(): SE3 {
@@ -45,13 +45,13 @@ export class SIM3 {
     return this.se3.getRotation();
   }
 
-  public getRotationM(): Float32Array {
-    return this.se3.getRotationM();
+  public getRotationMatrix(): Float32Array {
+    return this.se3.getRotationMatrix();
   }
 
   public mul$SIM3(sim3: SIM3): SIM3 {
     let newSim3: SIM3 = new SIM3(this);
-    newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationM(), Vec.scalarMult2(sim3.getTranslationMat(), this.getScale()), 3));
+    newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(sim3.getTranslationMat(), this.getScale()), 3));
     newSim3.se3.rotation.mulEq(sim3.getRotation());
     newSim3.scale *= sim3.getScale();
     newSim3.assertNotNaN();
@@ -67,14 +67,14 @@ export class SIM3 {
   }
 
   public mul$double_A(point: Float32Array): Float32Array {
-    return Vec.vecAdd2(this.getTranslationMat(), Vec.matVecMultiplySqr(this.getRotationM(), Vec.scalarMult2(point, this.getScale()), 3));
+    return Vec.vecAdd2(this.getTranslationMat(), Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(point, this.getScale()), 3));
   }
 
   public static inverse(sim3: SIM3): SIM3 {
     let inverse: SIM3 = new SIM3();
     inverse.se3.rotation = SO3.inverse(sim3.se3.rotation);
     inverse.scale = 1.0 / sim3.scale;
-    inverse.se3.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationM(), sim3.se3.translation, 3)), -inverse.scale);
+    inverse.se3.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), sim3.se3.translation, 3)), -inverse.scale);
     inverse.assertNotNaN();
     return inverse;
   }

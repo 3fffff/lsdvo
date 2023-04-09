@@ -168,7 +168,7 @@ export class DepthMap {
       let refToKf: SIM3;
       // Get SIM3 from frame to keyframe
       if (this.activeKeyFrame.id === 0) {
-        refToKf = frame.thisToParent_raw;
+        refToKf = frame.thisToParent;
       } else {
         refToKf = this.activeKeyFrame.getScaledCamToWorld().inverse().mul(frame.getScaledCamToWorld());
       }
@@ -1187,7 +1187,7 @@ export class DepthMap {
   public createKeyFrame(new_keyframe: Frame): void {
     console.assert(new_keyframe != null);
 
-    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent_raw.getSE3());
+    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent.getSE3());
 
     this.propagateDepth(new_keyframe);
 
@@ -1219,7 +1219,7 @@ export class DepthMap {
       this.currentDepthMap[i].idepth_var *= rescaleFactor2;
       this.currentDepthMap[i].idepth_var_smoothed *= rescaleFactor2;
     }
-    this.activeKeyFrame.thisToParent_raw = new SIM3(SE3.inverse(oldToNew_SE3), rescaleFactor);
+    this.activeKeyFrame.thisToParent = new SIM3(SE3.inverse(oldToNew_SE3), rescaleFactor);
 
     // Update depth in keyframe
     this.activeKeyFrame.setDepth(this.currentDepthMap);
@@ -1241,13 +1241,11 @@ export class DepthMap {
     }
 
     // re-usable values.
-    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent_raw.getSE3());
+    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent.getSE3());
     let trafoInv_t: Float32Array = oldToNew_SE3.getTranslation();
-    let trafoInv_R: Float32Array = oldToNew_SE3.getRotationM();
+    let trafoInv_R: Float32Array = oldToNew_SE3.getRotationMatrix();
 
-    let trackingWasGood: boolean[] | null = new_keyframe.kfID == this.activeKeyFrame.id
-      ? new_keyframe._refPixelWasGood
-      : null;
+    let trackingWasGood: boolean[] | null = new_keyframe.kfID == this.activeKeyFrame.id ? new_keyframe._refPixelWasGood : null;
 
     let activeKFImageData: Float32Array = this.activeKeyFrame.imageArrayLvl[0];
     let newKFMaxGrad: Float32Array = new_keyframe.imageGradientMaxArrayLvl[0];

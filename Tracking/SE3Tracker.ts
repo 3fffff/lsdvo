@@ -86,8 +86,7 @@ export class SE3Tracker {
     // For each pyramid level, coarse to fine
     for (let level = Constants.SE3TRACKING_MAX_LEVEL - 1; level >= Constants.SE3TRACKING_MIN_LEVEL; level -= 1) {
       referenceFrame.createPointCloud(level);
-      this.calculateResidualAndBuffers(referenceFrame.posData,
-        referenceFrame.colorAndVarData, frame, refToFrame, level);
+      this.calculateResidualAndBuffers(referenceFrame.posData, referenceFrame.colorAndVarData, frame, refToFrame, level);
 
       // Diverge when amount of pixels successfully warped into new frame < some
       // amount
@@ -176,13 +175,12 @@ export class SE3Tracker {
         * frame.height(Constants.SE3TRACKING_MIN_LEVEL)) > Constants.MIN_GOODPERALL_PIXEL
       && this.lastGoodCount / (this.lastGoodCount + this.lastBadCount) > Constants.MIN_GOODPERGOODBAD_PIXEL;
 
-    if (this.trackingWasGood)
-      referenceFrame.numFramesTrackedOnThis++;
+    if (this.trackingWasGood) referenceFrame.numFramesTrackedOnThis++;
 
     let frameToRef: SE3 = SE3.inverse(refToFrame);
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
-    frame.thisToParent_raw = new SIM3(frameToRef, 1.0);
+    frame.thisToParent = new SIM3(frameToRef, 1.0);
     frame.refcamToWorld = referenceFrame.camToWorld;
     frame.kfID = referenceFrame.id;
 
@@ -219,7 +217,7 @@ export class SE3Tracker {
     let cy: number = Constants.cy[level];
 
     // Get rotation, translation matrix
-    let rotationMat: Float32Array = frameToRefPose.getRotationM();
+    let rotationMat: Float32Array = frameToRefPose.getRotationMatrix();
     let translationVec: Float32Array = frameToRefPose.getTranslation();
     let sumResUnweighted: number = 0;
     let goodCount: number = 0;
@@ -348,14 +346,11 @@ export class SE3Tracker {
 
   /**
    * calculateWarpUpdate
-   * 
-   * @param ls
    */
   calculateWarpUpdate(ls: LGS6): void {
     ls.initialize();
     // For each warped pixel
     for (let i = 0; i < this.warpedCount; i++) {
-
       // x,y,z
       let px: number = this.bufWarpedX[i];
       let py: number = this.bufWarpedY[i];
