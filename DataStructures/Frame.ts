@@ -31,8 +31,7 @@ export class Frame {
   public numMappedOnThisTotal: number = 0;
   public meanIdepth: number = 0;
   public numPoints: number = 0;
-  public camToWorld: SIM3;
-  public refcamToWorld: SIM3;
+  public camToWorld: SIM3 = new SIM3();
   public thisToParent: SIM3;
   public kfID: number = 0;
   public trackedOnPoses: SE3[] = [];
@@ -256,11 +255,6 @@ export class Frame {
 
     this.thisToOther_t = thisToOther.getTranslation();
     this.thisToOther_R = Vec.matrixMul(thisToOther.getRotationMatrix(), thisToOther.getScale());
-  }
-
-  public getScaledCamToWorld(): SIM3 {
-    if (!this.refcamToWorld) return this.refcamToWorld = new SIM3();
-    return this.camToWorld = this.refcamToWorld.mul(this.thisToParent);
   }
 
   /**

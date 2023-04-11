@@ -181,7 +181,7 @@ export class SE3Tracker {
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
     frame.thisToParent = new SIM3(frameToRef, 1.0);
-    frame.refcamToWorld = referenceFrame.camToWorld;
+    frame.camToWorld = referenceFrame.camToWorld.mul(frame.thisToParent);
     frame.kfID = referenceFrame.id;
 
     // Add frameToRef to reference frame

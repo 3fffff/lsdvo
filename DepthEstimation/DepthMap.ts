@@ -170,7 +170,7 @@ export class DepthMap {
       if (this.activeKeyFrame.id === 0) {
         refToKf = frame.thisToParent;
       } else {
-        refToKf = this.activeKeyFrame.getScaledCamToWorld().inverse().mul(frame.getScaledCamToWorld());
+        refToKf = this.activeKeyFrame.camToWorld.inverse().mul(frame.camToWorld);
       }
 
       // prepare frame for stereo with keyframe, SE3, K, level
@@ -1150,13 +1150,13 @@ export class DepthMap {
 
         if (val_sum < validityTH) {
           dest.isValid = false;
+          dest.blacklisted--;
           continue;
         }
 
         if (removeOcclusions) {
           if (numOccluding > numNotOccluding) {
             dest.isValid = false;
-
             continue;
           }
         }

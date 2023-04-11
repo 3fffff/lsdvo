@@ -6,13 +6,9 @@ import { SE3 } from "./LieAlgebra/SE3";
 import { Vec } from "./LieAlgebra/Vec";
 
 export class LSDVO {
-
   currentKeyFrame: Frame;
   map: DepthMap;
-
   createNewKeyFrame: boolean = false;
-
-  keyframesAll: Frame[];
   tracker: SE3Tracker
   numkeyframes: number = 0
   mapping: boolean = false;
@@ -23,7 +19,6 @@ export class LSDVO {
   constructor(mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
-    if (this.mapping) this.keyframesAll = [];
   }
 
   randomInit(image: Float32Array, width: number, height: number): void {
@@ -77,25 +72,25 @@ export class LSDVO {
 
   doMappingIteration(trackingNewFrame: Frame): void | null {
     if (this.currentKeyFrame == null) {
-      console.log("doMappingIteration: currentKeyFrame is null!");
+      console.error("doMappingIteration: currentKeyFrame is null!");
       return;
     }
     // set mappingFrame
     if (this.tracker.trackingWasGood&& this.createNewKeyFrame) {
       console.log("doMappingIteration: create new keyframe");
-      // create new key frame
-      this.finishCurrentKeyframe();
-      this.createNewCurrentKeyframe(trackingNewFrame);
       if (this.mapping) {
         try {
-          Constants.writePointCloudToFile(this.keyframesAll);
+          Constants.writePointCloudToFile(this.currentKeyFrame);
         } catch (e) {
           console.log(e)
         }
       }
+      // create new key frame
+      this.finishCurrentKeyframe();
+      this.createNewCurrentKeyframe(trackingNewFrame);
       return
     } else if (!this.tracker.trackingWasGood) { // Tracking is not good
-      console.log("Tracking was bad!");
+      console.error("Tracking was bad!");
       if (this.map.isValid()) {
         if (this.currentKeyFrame.numMappedOnThisTotal >= Constants.MIN_NUM_MAPPED)
           console.log("map.invalidate");
@@ -112,7 +107,6 @@ export class LSDVO {
       // Copy from unmappedTrackedFrames to references
       // references - list of frames to map
       console.time("updatekeyframe")
-      //	this.unmappedTrackedFrames[0]._refPixelWasGood=null
       this.map.updateKeyframe(this.unmappedTrackedFrames);
       console.timeEnd("updatekeyframe")
       this.unmappedTrackedFrames.length = 0
@@ -123,11 +117,6 @@ export class LSDVO {
     console.log("FINALIZING KF: " + this.currentKeyFrame.id);
     this.map.finalizeKeyFrame();
     this.numkeyframes++
-    if (this.mapping) {
-      this.currentKeyFrame.camToWorld = this.currentKeyFrame.getScaledCamToWorld()
-      //this.currentKeyFrame.clearData();
-      this.keyframesAll.push(this.currentKeyFrame);
-    }
   }
 
   createNewCurrentKeyframe(newKeyframeCandidate: Frame): void {
