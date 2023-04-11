@@ -75,6 +75,7 @@ export class LSDVO {
       console.error("doMappingIteration: currentKeyFrame is null!");
       return;
     }
+    this.updateKeyframe();
     // set mappingFrame
     if (this.tracker.trackingWasGood&& this.createNewKeyFrame) {
       console.log("doMappingIteration: create new keyframe");
@@ -88,7 +89,6 @@ export class LSDVO {
       // create new key frame
       this.finishCurrentKeyframe();
       this.createNewCurrentKeyframe(trackingNewFrame);
-      return
     } else if (!this.tracker.trackingWasGood) { // Tracking is not good
       console.error("Tracking was bad!");
       if (this.map.isValid()) {
@@ -97,7 +97,6 @@ export class LSDVO {
         this.finishCurrentKeyframe();
       }
     }
-    this.updateKeyframe();
   }
 
   // Updates key frame with measurements from a new frame.

@@ -43,20 +43,16 @@ export class Frame {
    * Clear unused data to reduce memory usage
    */
   public clearData() {
-    this.imageArrayLvl.length = 0;
     this.imageGradientXArrayLvl.length = 0;
     this.imageGradientYArrayLvl.length = 0;
-    this.imageGradientMaxArrayLvl.length = 0;
+    this.inverseDepthVarianceLvl.length = 0;
     this._refPixelWasGood = null;
-    /*this.K_otherToThis_R.length = 0;
-    this.K_otherToThis_t.length = 0;
-    this.otherToThis_t.length = 0;
-    this.thisToOther_R.length = 0;
-    this.thisToOther_t.length = 0;*/
+    this.inverseDepthLvl.length = 0;
     this.colorAndVarData.length = 0
-    if (!this.isKF) {
-      this.inverseDepthLvl.length = 0;
-      this.inverseDepthVarianceLvl.length = 0;
+    this.posData.length = 0
+    if (!this.isKF) { 
+      this.imageGradientMaxArrayLvl.length = 0; 
+      this.imageArrayLvl.length = 0;
     }
   }
 
@@ -245,6 +241,7 @@ export class Frame {
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
   }
+  
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 

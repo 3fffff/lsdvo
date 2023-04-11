@@ -68,7 +68,6 @@ export class Constants {
    * Sets camera matrix for all pyramid levels. Pass in parameters for level 0.
    */
   public static setK(fx: number, fy: number, cx: number, cy: number) {
-
     Constants.fx[0] = fx;
     Constants.fy[0] = fy;
     Constants.cx[0] = cx;
@@ -94,9 +93,9 @@ export class Constants {
   }
   public static writePointCloudToFile(keyframe: Frame): void {
     console.log("WRITING KF " + keyframe.id);
-    Constants.getPointCloud(keyframe, 1)
-    let cameraPoints: Float32Array[] = Constants.generateCameraPosePoints(keyframe);
-    let allPoints: Float32Array[] = [...cameraPoints, ...keyframe.posData].filter(p => p !== undefined && p.length > 0 && !isNaN(p[0]));
+    const posData = Constants.getPointCloud(keyframe, 1)
+    const cameraPoints: Float32Array[] = Constants.generateCameraPosePoints(keyframe);
+    const allPoints: Float32Array[] = [...cameraPoints, ...posData].filter(p => p !== undefined && p.length > 0 && !isNaN(p[0]));
     // Write to file
     let header: string = "ply\n" + "format ascii 1.0\n" + "element vertex " + allPoints.length + "\n" + "property float x\n"
       + "property float y\n" + "property float z\n" + "end_header\n";
@@ -107,13 +106,19 @@ export class Constants {
     let blob = new Blob([header], { type: 'text/plain' });
     link.href = window.URL.createObjectURL(blob);
     link.click();
+    keyframe.clearData()
   }
 
-  static getPointCloud(keyframe: Frame, level: number) {
+  static getPointCloud(keyframe: Frame, level: number):Float32Array[] {
     let width: number = keyframe.width(level);
     let height: number = keyframe.height(level);
     let inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];
     let inverseDepthVariance: Float32Array = keyframe.inverseDepthVarianceLvl[level];
+    let posData: Float32Array[] = Array(width * height);
+    let fxInv: number = Constants.fxInv[level];
+    let fyInv: number = Constants.fyInv[level];
+    let cxInv: number = Constants.cxInv[level];
+    let cyInv: number = Constants.cyInv[level];
     let scaledTH: number = Constants.scaledDepthVarTH;
     let absTH: number = Constants.absDepthVarTH;
     for (let x = 1; x < width - 1; x++) {
@@ -127,14 +132,19 @@ export class Constants {
         let depth4: number = depth * depth;
         depth4 *= depth4;
         // Skip if depth/variance is not valid
-        if (keyframe.posData[idx] == undefined && idepth == 0 || var1 <= 0 || var1 * depth4 > scaledTH || var1 * depth4 > absTH)
+        if (idepth == 0 || var1 <= 0 || var1 * depth4 > scaledTH || var1 * depth4 > absTH)
           continue;
-        keyframe.posData[idx] = keyframe.camToWorld.mul(keyframe.posData[idx]);
+        // Set point, calculated from inverse depth
+        posData[idx] =
+          new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1.0 / idepth]);
+        // Transform
+        posData[idx] = keyframe.camToWorld.mul(posData[idx]);
+        posData[idx] = new Float32Array([posData[idx][0], posData[idx][1], posData[idx][2]]);
       }
     }
-    keyframe.inverseDepthLvl.length = 0
-    keyframe.inverseDepthVarianceLvl.length = 0
+    return posData
   }
+
   static generateCameraPosePoints(keyframe: Frame): Float32Array[] {
     let cameraPose: Array<SE3> = keyframe.trackedOnPoses;
     let cameraPoints: Float32Array[] = Array();
