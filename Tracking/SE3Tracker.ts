@@ -5,7 +5,6 @@ import { Vec } from "../LieAlgebra/Vec";
 import { SIM3 } from "../LieAlgebra/SIM3";
 
 export class SE3Tracker {
-
   // Settings variables
   maxItsPerLvl: Float32Array = new Float32Array([5, 20, 50, 100, 100]);
   lambdaInitial: Float32Array;

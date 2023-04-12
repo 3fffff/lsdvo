@@ -191,13 +191,12 @@ export class DepthMap {
     this.regularizeDepthMap(false, Constants.VAL_SUM_MIN_FOR_KEEP);
 
     // Update depth in keyframe
-    if (!this.activeKeyFrame.depthHasBeenUpdatedFlag) {
+    if (!this.activeKeyFrame.IDepthBeenSet) {
       // Update keyframe with updated depth?
       this.activeKeyFrame.setDepth(this.currentDepthMap);
     }
 
     this.activeKeyFrame.numMappedOnThis++;
-    this.activeKeyFrame.numMappedOnThisTotal++;
   }
 
   observeDepth(): void {
@@ -212,7 +211,6 @@ export class DepthMap {
    * @param yMax
    */
   observeDepthRow(yMin: number, yMax: number): void {
-
     let keyFrameMaxGradBuf: Float32Array = this.activeKeyFrame.imageGradientMaxArrayLvl[0];
     if (this.stereoTestCtx) {
       this.stereoTestCtx.clearRect(0, 0, this.width, this.height);

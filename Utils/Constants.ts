@@ -109,12 +109,12 @@ export class Constants {
     keyframe.clearData()
   }
 
-  static getPointCloud(keyframe: Frame, level: number):Float32Array[] {
+  static getPointCloud(keyframe: Frame, level: number): Float32Array[] {
     let width: number = keyframe.width(level);
     let height: number = keyframe.height(level);
     let inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];
     let inverseDepthVariance: Float32Array = keyframe.inverseDepthVarianceLvl[level];
-    let posData: Float32Array[] = Array(width * height);
+    let posData: Float32Array[] = [];
     let fxInv: number = Constants.fxInv[level];
     let fyInv: number = Constants.fyInv[level];
     let cxInv: number = Constants.cxInv[level];
@@ -132,14 +132,11 @@ export class Constants {
         let depth4: number = depth * depth;
         depth4 *= depth4;
         // Skip if depth/variance is not valid
-        if (idepth == 0 || var1 <= 0 || var1 * depth4 > scaledTH || var1 * depth4 > absTH)
-          continue;
+        if (idepth == 0 || var1 <= 0 || var1 * depth4 > scaledTH || var1 * depth4 > absTH) continue;
         // Set point, calculated from inverse depth
-        posData[idx] =
-          new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1.0 / idepth]);
-        // Transform
-        posData[idx] = keyframe.camToWorld.mul(posData[idx]);
-        posData[idx] = new Float32Array([posData[idx][0], posData[idx][1], posData[idx][2]]);
+        const pos = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1.0 / idepth]);
+        // Transform to world frame
+        posData.push(keyframe.camToWorld.mul(pos));
       }
     }
     return posData
@@ -147,7 +144,7 @@ export class Constants {
 
   static generateCameraPosePoints(keyframe: Frame): Float32Array[] {
     let cameraPose: Array<SE3> = keyframe.trackedOnPoses;
-    let cameraPoints: Float32Array[] = Array();
+    let cameraPoints: Float32Array[] = [];
     for (let i = 0; i < cameraPose.length; i++) {
       let se3: SE3 = cameraPose[i];
       let pt = new Float32Array([se3.translation[0], se3.translation[1], se3.translation[2]]);

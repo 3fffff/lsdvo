@@ -14,8 +14,7 @@ export class Frame {
   public imageGradientMaxArrayLvl: Array<Float32Array>;
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
-  public hasIDepthBeenSet: boolean = false;
-  public depthHasBeenUpdatedFlag: boolean = false;
+  public IDepthBeenSet: boolean = false;
   _refPixelWasGood: boolean[] | null;
   static totalFrames: number = 0;
   public numMappablePixels = 0
@@ -28,7 +27,6 @@ export class Frame {
   public initialTrackedResidual: number = 0;
   public numFramesTrackedOnThis: number = 0;
   public numMappedOnThis: number = 0;
-  public numMappedOnThisTotal: number = 0;
   public meanIdepth: number = 0;
   public numPoints: number = 0;
   public camToWorld: SIM3 = new SIM3();
@@ -48,8 +46,6 @@ export class Frame {
     this.inverseDepthVarianceLvl.length = 0;
     this._refPixelWasGood = null;
     this.inverseDepthLvl.length = 0;
-    this.colorAndVarData.length = 0
-    this.posData.length = 0
     if (!this.isKF) { 
       this.imageGradientMaxArrayLvl.length = 0; 
       this.imageArrayLvl.length = 0;
@@ -167,8 +163,7 @@ export class Frame {
     this.meanIdepth = sumIdepth / numIdepth;
     this.numPoints = numIdepth;
 
-    this.hasIDepthBeenSet = true;
-    this.depthHasBeenUpdatedFlag = true;
+    this.IDepthBeenSet = true;
 
     // Do lower levels
     for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
@@ -267,16 +262,16 @@ export class Frame {
     let fyInv: number = Constants.fyInv[level];
     let cxInv: number = Constants.cxInv[level];
     let cyInv: number = Constants.cyInv[level];
-    this.posData = Array(width * height);
-    this.colorAndVarData = Array(width * height);
+    this.posData = [];
+    this.colorAndVarData = [];
     for (let x: number = 1; x < width - 1; x++) {
       for (let y: number = 1; y < height - 1; y++) {
         let idx: number = x + y * width;
         let idepth: number = inverseDepth[idx];
         let vrb: number = inverseDepthVariance[idx];
         if (idepth === 0 || vrb <= 0) continue;
-        this.posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
-        this.colorAndVarData[idx] = new Float32Array([image[idx], vrb]);
+        this.posData.push(new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]));
+        this.colorAndVarData.push(new Float32Array([image[idx], vrb]));
       }
     }
   }
