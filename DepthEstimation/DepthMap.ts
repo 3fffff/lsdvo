@@ -24,7 +24,7 @@ export class DepthMap {
   width: number;
   height: number;
 
-  otherDepthMap: Array<DepthMapPixelHypothesis>;
+  otherDepthMap: DepthMapPixelHypothesis[];
   currentDepthMap: DepthMapPixelHypothesis[];
   validityIntegralBuffer: Float32Array;
 
@@ -1343,8 +1343,8 @@ export class DepthMap {
       }
 
     // swap!
-    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap;
-    this.currentDepthMap = this.otherDepthMap;
+    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap.slice();
+    this.currentDepthMap = this.otherDepthMap.slice();
     this.otherDepthMap = temp;
   }
 

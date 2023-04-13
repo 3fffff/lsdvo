@@ -33,9 +33,6 @@ export class Frame {
   public thisToParent: SIM3;
   public kfID: number = 0;
   public trackedOnPoses: SE3[] = [];
-  //point cloud
-  public posData: Array<Float32Array>;
-  public colorAndVarData: Array<Float32Array>;
 
   /**
    * Clear unused data to reduce memory usage
@@ -46,8 +43,8 @@ export class Frame {
     this.inverseDepthVarianceLvl.length = 0;
     this._refPixelWasGood = null;
     this.inverseDepthLvl.length = 0;
-    if (!this.isKF) { 
-      this.imageGradientMaxArrayLvl.length = 0; 
+    if (!this.isKF) {
+      this.imageGradientMaxArrayLvl.length = 0;
       this.imageArrayLvl.length = 0;
     }
   }
@@ -111,18 +108,18 @@ export class Frame {
   }
 
   gradientX(imageArrayLvl: Float32Array, level: number): Float32Array {
-    let imageGradientXArray: Float32Array = new Float32Array(imageArrayLvl.length);
-    let w: number = this.width(level);
-    let h: number = this.height(level);
+    const imageGradientXArray: Float32Array = new Float32Array(imageArrayLvl.length);
+    const w: number = this.width(level);
+    const h: number = this.height(level);
     for (let i: number = w; i <= w * (h - 1); i++)
       imageGradientXArray[i] = 0.5 * (imageArrayLvl[i + 1] - imageArrayLvl[i - 1]);
     return imageGradientXArray;
   }
 
   gradientY(imageArrayLvl: Float32Array, level: number): Float32Array {
-    let imageGradientYArray: Float32Array = new Float32Array(imageArrayLvl.length);
-    let w: number = this.width(level);
-    let h: number = this.height(level);
+    const imageGradientYArray: Float32Array = new Float32Array(imageArrayLvl.length);
+    const w: number = this.width(level);
+    const h: number = this.height(level);
     for (let i: number = w; i < w * (h - 1); i++)
       imageGradientYArray[i] = 0.5 * (imageArrayLvl[i + w] - imageArrayLvl[i - w]);
     return imageGradientYArray;
@@ -229,14 +226,14 @@ export class Frame {
   }
 
   buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number) {
-    let width: number = this.width(level - 1);
-    let height: number = this.height(level - 1);
+    const width: number = this.width(level - 1);
+    const height: number = this.height(level - 1);
     let dstIdx: number = 0;
     for (let y: number = 0; y < width * height; y += width * 2)
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
   }
-  
+
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 
@@ -250,29 +247,30 @@ export class Frame {
   }
 
   /**
-   * Create 3D points from inverse depth values
+   * Create 3D points from inverse depth values and count valid points
    */
   public createPointCloud(level: number) {
-    let width: number = this.width(level);
-    let height: number = this.height(level);
-    let image: Float32Array = this.imageArrayLvl[level];
-    let inverseDepth: Float32Array = this.inverseDepthLvl[level];
-    let inverseDepthVariance: Float32Array = this.inverseDepthVarianceLvl[level];
-    let fxInv: number = Constants.fxInv[level];
-    let fyInv: number = Constants.fyInv[level];
-    let cxInv: number = Constants.cxInv[level];
-    let cyInv: number = Constants.cyInv[level];
-    this.posData = [];
-    this.colorAndVarData = [];
+    const width: number = this.width(level);
+    const height: number = this.height(level);
+    const image: Float32Array = this.imageArrayLvl[level];
+    const inverseDepth: Float32Array = this.inverseDepthLvl[level];
+    const inverseDepthVariance: Float32Array = this.inverseDepthVarianceLvl[level];
+    const fxInv: number = Constants.fxInv[level];
+    const fyInv: number = Constants.fyInv[level];
+    const cxInv: number = Constants.cxInv[level];
+    const cyInv: number = Constants.cyInv[level];
+    let posData = [];
+    let colorAndVarData = [];
     for (let x: number = 1; x < width - 1; x++) {
       for (let y: number = 1; y < height - 1; y++) {
         let idx: number = x + y * width;
         let idepth: number = inverseDepth[idx];
         let vrb: number = inverseDepthVariance[idx];
         if (idepth === 0 || vrb <= 0) continue;
-        this.posData.push(new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]));
-        this.colorAndVarData.push(new Float32Array([image[idx], vrb]));
+        posData.push(new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]));
+        colorAndVarData.push(new Float32Array([image[idx], vrb]));
       }
     }
+    return [posData, colorAndVarData]
   }
 }

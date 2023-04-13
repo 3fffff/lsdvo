@@ -84,8 +84,8 @@ export class SE3Tracker {
 
     // For each pyramid level, coarse to fine
     for (let level = Constants.SE3TRACKING_MAX_LEVEL - 1; level >= Constants.SE3TRACKING_MIN_LEVEL; level -= 1) {
-      referenceFrame.createPointCloud(level);
-      this.calculateResidualAndBuffers(referenceFrame.posData, referenceFrame.colorAndVarData, frame, refToFrame, level);
+      const [posData, colorAndVarData] = referenceFrame.createPointCloud(level);
+      this.calculateResidualAndBuffers(posData, colorAndVarData, frame, refToFrame, level);
 
       // Diverge when amount of pixels successfully warped into new frame < some
       // amount
@@ -118,8 +118,7 @@ export class SE3Tracker {
           newRefToFrame.mulEq(refToFrame);
 
           // Re-evaluate residual
-          this.calculateResidualAndBuffers(referenceFrame.posData,
-            referenceFrame.colorAndVarData, frame, newRefToFrame, level);
+          this.calculateResidualAndBuffers(posData, colorAndVarData, frame, newRefToFrame, level);
 
           // Check for divergence
           if (this.warpedCount < Constants.MIN_GOODPERALL_PIXEL_ABSMIN * frame.width(level)
