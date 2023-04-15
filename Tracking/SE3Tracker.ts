@@ -232,7 +232,7 @@ export class SE3Tracker {
       let point: Float32Array = posData[i];
 
       // Skip if point is not valid
-      if (point == null) continue;
+      if (!point) continue;
       else numValidPoints++;
 
       // Warp to 2D image by estimate
@@ -307,11 +307,7 @@ export class SE3Tracker {
    * @return sum of weighted residuals divided by warpedCount
    */
   calculateWeightsAndResidual(referenceToFrame: SE3): number {
-
-    let tx: number = referenceToFrame.getTranslation()[0];
-    let ty: number = referenceToFrame.getTranslation()[1];
-    let tz: number = referenceToFrame.getTranslation()[2];
-
+    let [tx, ty, tz] = referenceToFrame.getTranslation();
     let sumRes: number = 0;
 
     for (let i = 0; i < this.warpedCount; i++) {

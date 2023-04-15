@@ -13,7 +13,7 @@ export class LSDVO {
   numkeyframes: number = 0
   mapping: boolean = false;
   debug: boolean = true;
-  
+
   constructor(mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
@@ -44,6 +44,8 @@ export class LSDVO {
     console.timeEnd("track")
     console.log("lastGoodCount " + this.tracker.lastGoodCount);
     console.log("lastBadCount " + this.tracker.lastBadCount);
+    const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
+    console.log("dens:" + this.currentKeyFrame.numPoints + ";good:" + lastGoodperBed + ";usg:" + this.tracker.pointUsage)
     if (this.debug) this.map.debugPlotDepthMap();
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
       console.log("trackingWasGood: " + this.tracker.trackingWasGood)
@@ -89,7 +91,7 @@ export class LSDVO {
       // create new key frame
       this.finishCurrentKeyframe();
       this.createNewCurrentKeyframe(trackingNewFrame);
-    }else trackingNewFrame.clearData()
+    } else trackingNewFrame.clearData()
   }
 
   finishCurrentKeyframe(): void {

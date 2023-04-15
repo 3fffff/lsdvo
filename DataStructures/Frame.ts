@@ -15,7 +15,6 @@ export class Frame {
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
   public IDepthBeenSet: boolean = false;
-  _refPixelWasGood: boolean[] | null;
   static totalFrames: number = 0;
   public numMappablePixels = 0
   id: number = 0;
@@ -41,7 +40,6 @@ export class Frame {
     this.imageGradientXArrayLvl.length = 0;
     this.imageGradientYArrayLvl.length = 0;
     this.inverseDepthVarianceLvl.length = 0;
-    this._refPixelWasGood = null;
     this.inverseDepthLvl.length = 0;
     if (!this.isKF) {
       this.imageGradientMaxArrayLvl.length = 0;
@@ -259,16 +257,16 @@ export class Frame {
     const fyInv: number = Constants.fyInv[level];
     const cxInv: number = Constants.cxInv[level];
     const cyInv: number = Constants.cyInv[level];
-    let posData = [];
-    let colorAndVarData = [];
+    let posData = Array(width*height);
+    let colorAndVarData = Array(width*height);
     for (let x: number = 1; x < width - 1; x++) {
       for (let y: number = 1; y < height - 1; y++) {
         let idx: number = x + y * width;
         let idepth: number = inverseDepth[idx];
         let vrb: number = inverseDepthVariance[idx];
         if (idepth === 0 || vrb <= 0) continue;
-        posData.push(new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]));
-        colorAndVarData.push(new Float32Array([image[idx], vrb]));
+        posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
+        colorAndVarData[idx] = new Float32Array([image[idx], vrb]);
       }
     }
     return [posData, colorAndVarData]

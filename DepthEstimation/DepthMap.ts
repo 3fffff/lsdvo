@@ -282,7 +282,7 @@ export class DepthMap {
     let refFrame: Frame = this.activeKeyFrameIsReactivated ? this.newest_referenceFrame : this.oldest_referenceFrame;
 
     // Frame tracked against activeKeyFrame?
-    if (refFrame.kfID == this.activeKeyFrame.id) {
+    /*if (refFrame.kfID == this.activeKeyFrame.id) {
       let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
 
       // Check if pixel is good during tracking?
@@ -290,7 +290,7 @@ export class DepthMap {
         + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
         return false;
       }
-    }
+    }*/
 
     // Get epipolar line??
     let epx: number, epy: number;
@@ -353,14 +353,14 @@ export class DepthMap {
       refFrame = this.newest_referenceFrame;
     }
 
-    if (refFrame.kfID == this.activeKeyFrame.id) {
+    /*if (refFrame.kfID == this.activeKeyFrame.id) {
       let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
 
       if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
         + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
         return false;
       }
-    }
+    }*/
 
     // Get epipolar line
     let epx: number, epy: number;
@@ -972,12 +972,12 @@ export class DepthMap {
 
     // calculate error from geometric noise (wrong camera pose /
     // calibration)
-    let gradsInterp: Float32Array = new Float32Array([Vec.interpolatedValue(this.activeKeyFrame.imageGradientXArrayLvl[0], u, v, this.width),
-    Vec.interpolatedValue(this.activeKeyFrame.imageGradientYArrayLvl[0], u, v, this.width)]);
+    let gradsInterpX = Vec.interpolatedValue(this.activeKeyFrame.imageGradientXArrayLvl[0], u, v, this.width);
+    let gradsInterpY = Vec.interpolatedValue(this.activeKeyFrame.imageGradientYArrayLvl[0], u, v, this.width);
 
-    let geoDispError: number = (gradsInterp[0] * epxn + gradsInterp[1] * epyn) + Constants.DIVISION_EPS;
+    let geoDispError: number = (gradsInterpX * epxn + gradsInterpY * epyn) + Constants.DIVISION_EPS;
     geoDispError = trackingErrorFac * trackingErrorFac
-      * (gradsInterp[0] * gradsInterp[0] + gradsInterp[1] * gradsInterp[1]) / (geoDispError * geoDispError);
+      * (gradsInterpX * gradsInterpX + gradsInterpY * gradsInterpY) / (geoDispError * geoDispError);
 
     // final error consists of a small constant part (discretization error),
     // geometric and photometric error.
@@ -1243,7 +1243,7 @@ export class DepthMap {
     let trafoInv_t: Float32Array = oldToNew_SE3.getTranslation();
     let trafoInv_R: Float32Array = oldToNew_SE3.getRotationMatrix();
 
-    let trackingWasGood: boolean[] | null = new_keyframe.kfID == this.activeKeyFrame.id ? new_keyframe._refPixelWasGood : null;
+    //let trackingWasGood: boolean[] | null = new_keyframe.kfID == this.activeKeyFrame.id ? new_keyframe._refPixelWasGood : null;
 
     let activeKFImageData: Float32Array = this.activeKeyFrame.imageArrayLvl[0];
     let newKFMaxGrad: Float32Array = new_keyframe.imageGradientMaxArrayLvl[0];
@@ -1275,25 +1275,25 @@ export class DepthMap {
         let newIDX: number = Math.floor(u_new + 0.5) + (Math.floor(v_new + 0.5)) * this.width;
         let destAbsGrad: number = newKFMaxGrad[newIDX];
 
-        if (trackingWasGood != null) {
-          if (!trackingWasGood[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-            + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]
-            || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
-            continue;
-          }
-        } else {
-          let sourceColor: number = activeKFImageData[x + y * this.width];
-          let destColor: number = Vec.interpolatedValue(newKFImageData, u_new, v_new, this.width);
+        /* if (trackingWasGood != null) {
+           if (!trackingWasGood[(x >> Constants.SE3TRACKING_MIN_LEVEL)
+             + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]
+             || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
+             continue;
+           }
+         } else {*/
+        let sourceColor: number = activeKFImageData[x + y * this.width];
+        let destColor: number = Vec.interpolatedValue(newKFImageData, u_new, v_new, this.width);
 
-          let residual: number = destColor - sourceColor;
+        let residual: number = destColor - sourceColor;
 
-          if (residual * residual
-            / (Constants.MAX_DIFF_CONSTANT
-              + Constants.MAX_DIFF_GRAD_MULT * destAbsGrad * destAbsGrad) > 1.0
-            || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
-            continue;
-          }
+        if (residual * residual
+          / (Constants.MAX_DIFF_CONSTANT
+            + Constants.MAX_DIFF_GRAD_MULT * destAbsGrad * destAbsGrad) > 1.0
+          || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
+          continue;
         }
+        //}
 
         let targetBest: DepthMapPixelHypothesis = this.otherDepthMap[newIDX];
 
@@ -1345,7 +1345,7 @@ export class DepthMap {
     // swap!
     let temp: DepthMapPixelHypothesis[] = this.currentDepthMap.slice();
     this.currentDepthMap = this.otherDepthMap.slice();
-    this.otherDepthMap = temp;
+    this.otherDepthMap = temp.slice();
   }
 
   public debugPlotDepthMap(): void {
