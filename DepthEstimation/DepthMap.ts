@@ -1088,13 +1088,10 @@ export class DepthMap {
   }
 
   copyDepthMapArray(): void {
-    for (let i = 0; i < this.currentDepthMap.length; i++) {
-      if (this.currentDepthMap[i]) {
-        this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
-      } else {
-        console.log("no currentDepthMap")
-      }
-    }
+    this.otherDepthMap = this.currentDepthMap.slice()
+    //console.log(this.otherDepthMap)
+    //for (let i = 0; i < this.currentDepthMap.length; i++)
+    //  this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {
@@ -1233,9 +1230,8 @@ export class DepthMap {
 
     // wipe depthmap
     for (let i = this.width * this.height - 1; i >= 0; i--) {
-      let pt: DepthMapPixelHypothesis = this.otherDepthMap[i];
-      pt.isValid = false;
-      pt.blacklisted = 0;
+      this.otherDepthMap[i].isValid = false;
+      this.otherDepthMap[i].blacklisted = 0;
     }
 
     // re-usable values.
@@ -1254,8 +1250,9 @@ export class DepthMap {
       for (let x = 0; x < this.width; x++) {
         let source: DepthMapPixelHypothesis = this.currentDepthMap[x + y * this.width];
 
-        if (!source.isValid)
-          continue;
+        if (!source.isValid) continue;
+
+        console.log("source valid")
 
         let r: Float32Array = new Float32Array([x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0]);
 

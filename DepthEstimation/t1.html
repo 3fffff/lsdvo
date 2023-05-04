@@ -1,0 +1,38 @@
+<script>
+    const data = [{ time: 0, value: 'yandex' }, { time: 8, value: 'adventure' }, { time: 3, value: '010' }, { time: 9, value: '01111' }]
+    function test1(data) {
+
+        const first = data.filter(e => !parseInt(e.value));
+        const second = data.filter(e => parseInt(e.value));
+        const firstSorted = first.sort((a, b) => a.time - b.time)
+        console.log(firstSorted)
+        const strLen = first[first.length - 1].time + first[first.length - 1].value.length
+        const result = Array(strLen)
+        for (let i = 0; i < firstSorted.length; i++)
+            for (let j = 0; j < firstSorted[i].value.length; j++)
+                result[firstSorted[i].time + j] = firstSorted[i].value[j]
+        console.log(result)
+        let word = []
+        for (let i = 0; i < second.length; i++) {
+            for (let j = 0; j < second[i].value.length; j++) {
+                if (second[i].value[j] === '1' && result[j + second[i].time] === undefined)
+                    word.push('')
+                if (second[i].value[j] === '1')
+                    word.push(result[j + second[i].time])
+            }
+        }
+        console.log(word)
+    }
+    test1(data)
+
+    const transferChunk = (...chunk) => Promise.all(chunk.map())
+
+    function transferQuantums(quantums, n) {
+        let sortedQuantums = quantums.sort((a, b) => b.priority - a.priority)
+        let quantumChunks = []
+        for (let i = 0; i < sortedQuantums.length; i += n)
+            quantumChunks.push(sortedQuantums.slice(i, i + n))
+
+    }
+
+</script>

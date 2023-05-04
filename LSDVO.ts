@@ -9,8 +9,7 @@ export class LSDVO {
   currentKeyFrame: Frame;
   map: DepthMap;
   createNewKeyFrame: boolean = false;
-  tracker: SE3Tracker
-  numkeyframes: number = 0
+  tracker: SE3Tracker;
   mapping: boolean = false;
   debug: boolean = true;
 
@@ -56,8 +55,8 @@ export class LSDVO {
     if (!this.createNewKeyFrame && this.currentKeyFrame.numMappedOnThis > Constants.MIN_NUM_MAPPED) {
 
       let dist: Float32Array = Vec.scalarMult2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
-      let minVal: number = Math.min(0.2 + this.numkeyframes * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
-      if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
+      let minVal: number = Math.min(0.2 + Frame.totalFrames * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
+      if (Frame.totalFrames < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
 
       if (this.getRefFrameScore(Vec.dot(dist, dist), this.tracker.pointUsage) > minVal) {
@@ -75,29 +74,28 @@ export class LSDVO {
       console.error("doMappingIteration: currentKeyFrame is null!");
       return;
     }
-    console.time("updatekeyframe")
-    this.map.updateKeyframe([trackingNewFrame]);
-    console.timeEnd("updatekeyframe")
     // set mappingFrame
-    if (this.tracker.trackingWasGood && this.createNewKeyFrame) {
-      console.log("doMappingIteration: create new keyframe");
-      if (this.mapping) {
-        try {
-          Constants.writePointCloudToFile(this.currentKeyFrame);
-        } catch (e) {
-          console.log(e)
+    if (this.tracker.trackingWasGood) {
+      if (this.createNewKeyFrame) {
+        console.log("doMappingIteration: create new keyframe");
+        if (this.mapping) {
+          try {
+            Constants.writePointCloudToFile(this.currentKeyFrame);
+          } catch (e) {
+            console.log(e)
+          }
         }
+        // create new key frame
+        console.log("FINALIZING KF: " + this.currentKeyFrame.id);
+        this.map.finalizeKeyFrame();
+        this.createNewCurrentKeyframe(trackingNewFrame);
+      } else {
+        console.time("updatekeyframe")
+        this.map.updateKeyframe([trackingNewFrame]);
+        console.timeEnd("updatekeyframe")
+        trackingNewFrame.clearData()
       }
-      // create new key frame
-      this.finishCurrentKeyframe();
-      this.createNewCurrentKeyframe(trackingNewFrame);
-    } else trackingNewFrame.clearData()
-  }
-
-  finishCurrentKeyframe(): void {
-    console.log("FINALIZING KF: " + this.currentKeyFrame.id);
-    this.map.finalizeKeyFrame();
-    this.numkeyframes++
+    }
   }
 
   createNewCurrentKeyframe(newKeyframeCandidate: Frame): void {

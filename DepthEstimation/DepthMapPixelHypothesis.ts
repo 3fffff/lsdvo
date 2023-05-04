@@ -5,41 +5,41 @@ export class DepthMapPixelHypothesis {
    * Flag telling if there is a valid estimate at this point. All other values are
    * only valid if this is set to true.
    */
-  public isValid: boolean;
+  public isValid: boolean = false;
 
   /**
    * Flag that blacklists a point to never be used - set if stereo fails
    * repeatedly on this pixel.
    */
-  public blacklisted: number;
+  public blacklisted: number = 0;
 
   /**
    * How many frames to skip ahead in the tracked-frames-queue.
    */
-  public nextStereoFrameMinID: number;
+  public nextStereoFrameMinID: number = 0;
 
   /**
    * Counter for validity, basically how many successful observations are
    * incorporated.
    */
-  public validity_counter: number;
+  public validity_counter: number = 0;
 
   /**
    * Actual Gaussian Distribution.
    */
-  public idepth: number;
+  public idepth: number = 0;
 
-  public idepth_var: number;
+  public idepth_var: number = 0;
 
   /**
    * Smoothed Gaussian Distribution.
    */
-  public idepth_smoothed: number;
+  public idepth_smoothed: number = 0;
 
-  public idepth_var_smoothed: number;
+  public idepth_var_smoothed: number = 0;
 
 
-  public constructor(idepth?: any, idepth_smoothed?: any, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
+  public constructor(idepth?: any, idepth_smoothed?: number, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
     if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && ((typeof idepth_var_smoothed === 'number') || idepth_var_smoothed === null) && ((typeof my_validity_counter === 'number') || my_validity_counter === null)) {
       this.isValid = true;
       this.blacklisted = 0;
@@ -70,9 +70,6 @@ export class DepthMapPixelHypothesis {
       this.idepth_var = idepth.idepth_var;
       this.idepth_smoothed = idepth.idepth_smoothed;
       this.idepth_var_smoothed = idepth.idepth_var_smoothed;
-    } else {
-      this.isValid = false;
-      this.blacklisted = 0;
     }
   }
 
