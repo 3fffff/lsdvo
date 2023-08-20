@@ -1088,10 +1088,10 @@ export class DepthMap {
   }
 
   copyDepthMapArray(): void {
-    this.otherDepthMap = this.currentDepthMap.slice()
+    //this.otherDepthMap = this.currentDepthMap.slice()
     //console.log(this.otherDepthMap)
-    //for (let i = 0; i < this.currentDepthMap.length; i++)
-    //  this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
+    for (let i = 0; i < this.currentDepthMap.length; i++)
+      this.otherDepthMap[i] = this.currentDepthMap[i];
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {
