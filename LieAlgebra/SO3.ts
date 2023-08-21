@@ -146,12 +146,12 @@ export class SO3 {
    * @param {SO3} so3
    */
   public mulEq(so3: SO3) {
-    this.matrix = Vec.multMatrix(this.matrix, so3.matrix, 3, 3, 3, 3);
+    this.matrix = Vec.mulMatrix(this.matrix, so3.matrix, 3, 3, 3, 3);
     this.assertNotNaN();
   }
 
   public mul(so3: SO3): SO3 {
-    return new SO3(Vec.multMatrix(this.matrix, so3.matrix, 3, 3, 3, 3));
+    return new SO3(Vec.mulMatrix(this.matrix, so3.matrix, 3, 3, 3, 3));
   }
 
   public coerce() {

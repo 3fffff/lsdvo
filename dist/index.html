@@ -55,20 +55,20 @@
                 cnv.height = img[i].height
                 cnv.width = img[i].width
                 ctx.drawImage(img[i], 0, 0, img[i].width, img[i].height);
-                let idata = ctx.getImageData(0, 0, img[i].width, img[i].height)
-                let imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
-                let d = getGray(idata.data, idata.width, idata.height)
+                const idata = ctx.getImageData(0, 0, img[i].width, img[i].height)
+                const imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
+                const d = getGray(idata.data, idata.width, idata.height)
                 console.time("All")
                 newImageCallback(d, idata.width, idata.height)
                 console.timeEnd("All")
-            }, i, i)
+            }, i)
         }
     }
 
     document.getElementById("inputFile").addEventListener("change", handleFileSelect)
 
     function getGray(dataAlp, w, h) {
-        let data = new Array(w * h);
+        const data = new Array(w * h);
         for (let i = 0; i < w * h * 4; i += 4)
             data[i / 4] = dataAlp[i + 0];
         return data

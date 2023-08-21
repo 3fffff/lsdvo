@@ -235,7 +235,7 @@ export class Frame {
   public prepareForStereoWith(thisToOther: SIM3): void {
     let otherToThis: SIM3 = thisToOther.inverse();
 
-    this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
+    this.K_otherToThis_R = Vec.matrixMul(Vec.mulMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
       otherToThis.getScale());
     this.otherToThis_t = otherToThis.getTranslation();
     this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);

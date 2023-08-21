@@ -38,8 +38,7 @@ export class LSDVO {
     [this.currentKeyFrame.trackedOnPoses.length - 1] : new SE3();
 
     console.time("track")
-    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
-      frameToReference_initialEstimate);
+    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame, frameToReference_initialEstimate);
     console.timeEnd("track")
     console.log("lastGoodCount " + this.tracker.lastGoodCount);
     console.log("lastBadCount " + this.tracker.lastBadCount);

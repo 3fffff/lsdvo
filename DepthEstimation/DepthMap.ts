@@ -472,7 +472,6 @@ export class DepthMap {
 
         target.nextStereoFrameMinID = refFrame.id + inc;
       }
-
       return true;
     }
   }
@@ -1088,10 +1087,10 @@ export class DepthMap {
   }
 
   copyDepthMapArray(): void {
-    //this.otherDepthMap = this.currentDepthMap.slice()
-    //console.log(this.otherDepthMap)
-    for (let i = 0; i < this.currentDepthMap.length; i++)
-      this.otherDepthMap[i] = this.currentDepthMap[i];
+    this.otherDepthMap = this.currentDepthMap.slice()
+    console.log(this.otherDepthMap)
+    //for (let i = 0; i < this.currentDepthMap.length; i++)
+    //  this.otherDepthMap[i] = this.currentDepthMap[i];
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {
@@ -1207,8 +1206,7 @@ export class DepthMap {
     let rescaleFactor: number = numIdepth / sumIdepth;
     let rescaleFactor2: number = rescaleFactor * rescaleFactor;
     for (let i = 0; i < this.width * this.height; i++) {
-      if (!this.currentDepthMap[i].isValid)
-        continue;
+      if (!this.currentDepthMap[i].isValid) continue;
       this.currentDepthMap[i].idepth *= rescaleFactor;
       this.currentDepthMap[i].idepth_smoothed *= rescaleFactor;
       this.currentDepthMap[i].idepth_var *= rescaleFactor2;
@@ -1368,7 +1366,7 @@ export class DepthMap {
 
       if (!this.currentDepthMap[i].isValid) continue;
 
-      const color: Float32Array = this.currentDepthMap[i].getVisualizationColor(3);
+      const color: Uint8Array = this.currentDepthMap[i].getVisualizationColor(3);
       imgDataS.data[i * 4 + 0] = color[0]
       imgDataS.data[i * 4 + 1] = color[1]
       imgDataS.data[i * 4 + 2] = color[2]

@@ -73,10 +73,10 @@ export class DepthMapPixelHypothesis {
     }
   }
 
-  getVisualizationColor(lastFrameID: number): Float32Array {
+  getVisualizationColor(lastFrameID: number): Uint8Array {
     if (Constants.debugDisplay === 0 || Constants.debugDisplay === 1) {
       let id: number = this.idepth_smoothed;
-      if (id < 0) return new Float32Array([255, 255, 255]);
+      if (id < 0) return new Uint8Array([255, 255, 255]);
       let r: number = (0.0 - id) * 255.0 / 1.0;
       if (r < 0) r = -r;
       let g: number = (1.0 - id) * 255.0 / 1.0;
@@ -86,12 +86,12 @@ export class DepthMapPixelHypothesis {
       let rc: number = (r < 0 ? 0 : (r > 255 ? 255 : r));
       let gc: number = (g < 0 ? 0 : (g > 255 ? 255 : g));
       let bc: number = (b < 0 ? 0 : (b > 255 ? 255 : b));
-      return new Float32Array([(255 - rc), (255 - gc), (255 - bc)]);
+      return new Uint8Array([(255 - rc), (255 - gc), (255 - bc)]);
     }
     if (Constants.debugDisplay === 2) {
       let f: number = this.validity_counter * (255.0 / (Constants.debugDisplay + Constants.debugDisplay));
       let v: number = (f < 0 ? 0 : (f > 255 ? 255 : f));
-      return new Float32Array([0, v, v]);
+      return new Uint8Array([0, v, v]);
     }
     if (Constants.debugDisplay === 3 || Constants.debugDisplay === 4) {
       let idv: number;
@@ -99,14 +99,14 @@ export class DepthMapPixelHypothesis {
       let _var: number = -0.5 * (x => Math.log(x) * Math.LOG10E)(idv);
       _var = _var * 255 * 0.333;
       if (_var > 255) _var = 255;
-      if (_var < 0) return new Float32Array([0, 0, 255]);
-      return new Float32Array([(255 - _var), _var, 0]);
+      if (_var < 0) return new Uint8Array([0, 0, 255]);
+      return new Uint8Array([(255 - _var), _var, 0]);
     }
     if (Constants.debugDisplay === 5) {
-      let f: number = (this.nextStereoFrameMinID - lastFrameID) * (255.0 / 100);
-      let v: number = (f < 0 ? 0 : (f > 255 ? 255 : f));
-      return new Float32Array([v, 0, v]);
+      let f: number = (this.nextStereoFrameMinID - lastFrameID) * (255 / 100);
+      let v: number = ~~(f < 0 ? 0 : (f > 255 ? 255 : f));
+      return new Uint8Array([v, 0, v]);
     }
-    return new Float32Array([255, 255, 255]);
+    return new Uint8Array([255, 255, 255]);
   }
 }
