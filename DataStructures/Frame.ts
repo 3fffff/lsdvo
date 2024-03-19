@@ -168,7 +168,7 @@ export class Frame {
 
   buildIDepthAndIDepthVar(level: number) {
     if (level <= 0) {
-      console.error("buildIDepthAndIDepthVar: Invalid level parameter!");
+      console.error("Invalid level parameter!");
       return;
     }
     let width: number = this.width(level);
@@ -257,8 +257,8 @@ export class Frame {
     const fyInv: number = Constants.fyInv[level];
     const cxInv: number = Constants.cxInv[level];
     const cyInv: number = Constants.cyInv[level];
-    let posData = Array(width*height);
-    let colorAndVarData = Array(width*height);
+    let posData = Array(width * height);
+    let colorAndVarData = Array(width * height);
     for (let x: number = 1; x < width - 1; x++) {
       for (let y: number = 1; y < height - 1; y++) {
         let idx: number = x + y * width;

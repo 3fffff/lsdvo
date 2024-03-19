@@ -64,6 +64,7 @@ export class Constants {
   public static fyInv: Float32Array = new Float32Array(Constants.PYRAMID_LEVELS);
   public static cxInv: Float32Array = new Float32Array(Constants.PYRAMID_LEVELS);
   public static cyInv: Float32Array = new Float32Array(Constants.PYRAMID_LEVELS);
+  public static frameScore: number = 12
   /**
    * Sets camera matrix for all pyramid levels. Pass in parameters for level 0.
    */
@@ -109,7 +110,7 @@ export class Constants {
     keyframe.clearData()
   }
 
-  static getPointCloud(keyframe: Frame, level: number):Float32Array[] {
+  static getPointCloud(keyframe: Frame, level: number): Float32Array[] {
     let width: number = keyframe.width(level);
     let height: number = keyframe.height(level);
     let inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];

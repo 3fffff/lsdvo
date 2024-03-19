@@ -1,5 +1,3 @@
-import { Constants } from "../Utils/Constants";
-
 export class DepthMapPixelHypothesis {
   /**
    * Flag telling if there is a valid estimate at this point. All other values are
@@ -73,8 +71,8 @@ export class DepthMapPixelHypothesis {
     }
   }
 
-  getVisualizationColor(lastFrameID: number): Uint8Array {
-    if (Constants.debugDisplay === 0 || Constants.debugDisplay === 1) {
+  getVisualizationColor(color:number): Uint8Array {
+    if (color === 0 || color === 1) {
       let id: number = this.idepth_smoothed;
       if (id < 0) return new Uint8Array([255, 255, 255]);
       let r: number = (0.0 - id) * 255.0 / 1.0;
@@ -88,24 +86,19 @@ export class DepthMapPixelHypothesis {
       let bc: number = (b < 0 ? 0 : (b > 255 ? 255 : b));
       return new Uint8Array([(255 - rc), (255 - gc), (255 - bc)]);
     }
-    if (Constants.debugDisplay === 2) {
-      let f: number = this.validity_counter * (255.0 / (Constants.debugDisplay + Constants.debugDisplay));
+    if (color === 2) {
+      let f: number = this.validity_counter * (255.0 / (color + color));
       let v: number = (f < 0 ? 0 : (f > 255 ? 255 : f));
       return new Uint8Array([0, v, v]);
     }
-    if (Constants.debugDisplay === 3 || Constants.debugDisplay === 4) {
+    if (color === 3 || color === 4) {
       let idv: number;
-      if (Constants.debugDisplay === 3) idv = this.idepth_var_smoothed; else idv = this.idepth_var;
+      if (color === 3) idv = this.idepth_var_smoothed; else idv = this.idepth_var;
       let _var: number = -0.5 * (x => Math.log(x) * Math.LOG10E)(idv);
       _var = _var * 255 * 0.333;
       if (_var > 255) _var = 255;
       if (_var < 0) return new Uint8Array([0, 0, 255]);
       return new Uint8Array([(255 - _var), _var, 0]);
-    }
-    if (Constants.debugDisplay === 5) {
-      let f: number = (this.nextStereoFrameMinID - lastFrameID) * (255 / 100);
-      let v: number = ~~(f < 0 ? 0 : (f > 255 ? 255 : f));
-      return new Uint8Array([v, 0, v]);
     }
     return new Uint8Array([255, 255, 255]);
   }

@@ -39,33 +39,10 @@ export class DepthMap {
   // Camera matrix
   fx: number; fy: number; cx: number; cy: number;
   fxi: number; fyi: number; cxi: number; cyi: number;
-  stereoTest: HTMLCanvasElement = document.createElement("canvas");
-  stereoTestCtx: CanvasRenderingContext2D | null = this.stereoTest.getContext("2d")
-  stereoTestReference: HTMLCanvasElement = document.createElement("canvas");
-  stereoTestReferenceCtx: CanvasRenderingContext2D | null = this.stereoTest.getContext("2d")
-  keyFrame: HTMLCanvasElement = document.createElement("canvas");
-  keyFrameCtx: CanvasRenderingContext2D | null = this.keyFrame.getContext("2d")
-  grad: HTMLCanvasElement = document.createElement("canvas");
-  gradCtx: CanvasRenderingContext2D | null = this.grad.getContext("2d")
 
   constructor(w: number, h: number) {
     this.width = w;
     this.height = h;
-    this.stereoTest.id = 'stereo';
-    this.stereoTest.width = w;
-    this.stereoTest.height = h;
-    this.stereoTestReference.id = 'reference';
-    this.stereoTestReference.width = w;
-    this.stereoTestReference.height = h;
-    this.keyFrame.id = 'keyframe';
-    this.keyFrame.width = w;
-    this.keyFrame.height = h;
-    this.grad.id = 'grad';
-    this.grad.width = w;
-    this.grad.height = h;
-    document.body.appendChild(this.keyFrame)
-    document.body.appendChild(this.grad)
-    document.body.appendChild(this.stereoTest)
 
     //this.activeKeyFrame = null;
     this.otherDepthMap = Array(this.width * this.height);
@@ -212,34 +189,6 @@ export class DepthMap {
    */
   observeDepthRow(yMin: number, yMax: number): void {
     let keyFrameMaxGradBuf: Float32Array = this.activeKeyFrame.imageGradientMaxArrayLvl[0];
-    if (this.stereoTestCtx) {
-      this.stereoTestCtx.clearRect(0, 0, this.width, this.height);
-      let stereoTestI: ImageData = this.stereoTestCtx.createImageData(this.width, this.height);
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          let idx = x + y * this.width;
-          stereoTestI.data[idx * 4 + 0] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestI.data[idx * 4 + 1] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestI.data[idx * 4 + 2] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestI.data[idx * 4 + 3] = 255
-        }
-      }
-      this.stereoTestCtx.putImageData(stereoTestI, 0, 0);
-    }
-    if (this.stereoTestReferenceCtx) {
-      this.stereoTestReferenceCtx.clearRect(0, 0, this.width, this.height);
-      let stereoTestReferenceI: ImageData = this.stereoTestReferenceCtx.createImageData(this.width, this.height);
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          const idx = x + y * this.width;
-          stereoTestReferenceI.data[idx * 4 + 0] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestReferenceI.data[idx * 4 + 1] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestReferenceI.data[idx * 4 + 2] = Math.ceil(0.5 * this.oldest_referenceFrame.imageArrayLvl[0][idx] + 0.5 * this.newest_referenceFrame.imageArrayLvl[0][idx])
-          stereoTestReferenceI.data[idx * 4 + 3] = 255
-        }
-      }
-      this.stereoTestReferenceCtx.putImageData(stereoTestReferenceI, 0, 0);
-    }
 
     // For each row assigned
     for (let y = yMin; y < yMax; y++) {
@@ -280,17 +229,6 @@ export class DepthMap {
     // What is activeKeyFrameIsReactivated?
     // Key frame was used before?
     let refFrame: Frame = this.activeKeyFrameIsReactivated ? this.newest_referenceFrame : this.oldest_referenceFrame;
-
-    // Frame tracked against activeKeyFrame?
-    /*if (refFrame.kfID == this.activeKeyFrame.id) {
-      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
-
-      // Check if pixel is good during tracking?
-      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
-        return false;
-      }
-    }*/
 
     // Get epipolar line??
     let epx: number, epy: number;
@@ -353,14 +291,6 @@ export class DepthMap {
       refFrame = this.newest_referenceFrame;
     }
 
-    /*if (refFrame.kfID == this.activeKeyFrame.id) {
-      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
-
-      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
-        return false;
-      }
-    }*/
 
     // Get epipolar line
     let epx: number, epy: number;
@@ -1221,9 +1151,8 @@ export class DepthMap {
 
   propagateDepth(new_keyframe: Frame): void {
     if (new_keyframe.kfID != this.activeKeyFrame.id) {
-      console.log(
-        "WARNING: propagating depth from frame %d to %d, which was tracked on a different frame (%d).\nWhile this should work, it is not recommended.",
-        this.activeKeyFrame.id, new_keyframe.id, new_keyframe.kfID);
+      console.log(`WARNING: propagating depth from frame ${this.activeKeyFrame.id} to ${new_keyframe.id}, 
+        which was tracked on a different frame (${new_keyframe.kfID}).\nWhile this should work, it is not recommended.`);
     }
 
     // wipe depthmap
@@ -1270,13 +1199,6 @@ export class DepthMap {
         let newIDX: number = Math.floor(u_new + 0.5) + (Math.floor(v_new + 0.5)) * this.width;
         let destAbsGrad: number = newKFMaxGrad[newIDX];
 
-        /* if (trackingWasGood != null) {
-           if (!trackingWasGood[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-             + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]
-             || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
-             continue;
-           }
-         } else {*/
         let sourceColor: number = activeKFImageData[x + y * this.width];
         let destColor: number = Vec.interpolatedValue(newKFImageData, u_new, v_new, this.width);
 
@@ -1343,37 +1265,6 @@ export class DepthMap {
     this.otherDepthMap = temp.slice();
   }
 
-  public debugPlotDepthMap(): void {
-    if (this.activeKeyFrame == null) return;
-    if (!this.keyFrameCtx || !this.gradCtx) return;
-
-    let imgDataS: ImageData = this.keyFrameCtx.createImageData(this.width, this.height);
-    let imgDataGS: ImageData = this.gradCtx.createImageData(this.width, this.height);
-    for (let i = 0; i < this.height * this.width; i++) {
-      imgDataS.data[i * 4 + 0] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataS.data[i * 4 + 1] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataS.data[i * 4 + 2] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataS.data[i * 4 + 3] = 255;
-      imgDataGS.data[i * 4 + 0] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataGS.data[i * 4 + 1] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataGS.data[i * 4 + 2] = this.activeKeyFrame.imageArrayLvl[0][i];
-      imgDataGS.data[i * 4 + 3] = 255
-      if (this.activeKeyFrame.imageGradientMaxArrayLvl[0][i] > Constants.MIN_ABS_GRAD_CREATE)
-        imgDataGS.data[i * 4 + 1] = 255
-      if (this.currentDepthMap[i].blacklisted < Constants.MIN_BLACKLIST &&
-        Constants.debugDisplay == 2)
-        imgDataS.data[i * 4 + 3] = 255
-
-      if (!this.currentDepthMap[i].isValid) continue;
-
-      const color: Uint8Array = this.currentDepthMap[i].getVisualizationColor(3);
-      imgDataS.data[i * 4 + 0] = color[0]
-      imgDataS.data[i * 4 + 1] = color[1]
-      imgDataS.data[i * 4 + 2] = color[2]
-    }
-    this.keyFrameCtx.putImageData(imgDataS, 0, 0);
-    this.gradCtx.putImageData(imgDataGS, 0, 0);
-  }
   /*
    * Make val non-zero
    */

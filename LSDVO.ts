@@ -4,6 +4,7 @@ import { DepthMap } from "./DepthEstimation/DepthMap";
 import { Constants } from "./Utils/Constants";
 import { SE3 } from "./LieAlgebra/SE3";
 import { Vec } from "./LieAlgebra/Vec";
+import { TestDepth } from "./DepthEstimation/TestDepth";
 
 export class LSDVO {
   currentKeyFrame: Frame;
@@ -11,7 +12,8 @@ export class LSDVO {
   createNewKeyFrame: boolean = false;
   tracker: SE3Tracker;
   mapping: boolean = false;
-  debug: boolean = true;
+  debugDepth: TestDepth | null = null;
+  debug: boolean
 
   constructor(mapping: boolean, debug: boolean) {
     this.debug = debug
@@ -20,6 +22,7 @@ export class LSDVO {
 
   randomInit(image: Float32Array, width: number, height: number): void {
     this.map = new DepthMap(width, height);
+    this.debugDepth = this.debug ? new TestDepth(this.map) : null
     this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
     this.currentKeyFrame = new Frame(image, width, height);
@@ -27,7 +30,7 @@ export class LSDVO {
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.debug) this.map.debugPlotDepthMap();
+    if (this.debugDepth) this.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
     console.log("Done random initialization.");
   }
 
@@ -40,14 +43,14 @@ export class LSDVO {
     console.time("track")
     let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame, frameToReference_initialEstimate);
     console.timeEnd("track")
-    console.log("lastGoodCount " + this.tracker.lastGoodCount);
-    console.log("lastBadCount " + this.tracker.lastBadCount);
+    console.log(`lastGoodCount:${this.tracker.lastGoodCount}`);
+    console.log(`lastBadCount:${this.tracker.lastBadCount}`);
     const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
-    console.log("dens:" + this.currentKeyFrame.numPoints + ";good:" + lastGoodperBed + ";usg:" + this.tracker.pointUsage)
-    if (this.debug) this.map.debugPlotDepthMap();
+    console.log(`dens:${this.currentKeyFrame.numPoints} good:${lastGoodperBed} usg:${this.tracker.pointUsage}`)
+    if (this.debugDepth) this.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
-      console.log("trackingWasGood: " + this.tracker.trackingWasGood)
-      console.log("diverged: " + this.tracker.diverged);
+      console.log(`trackingWasGood:${this.tracker.trackingWasGood}`)
+      console.log(`diverged:${this.tracker.diverged}`);
       return;
     }
     // Keyframe selection
@@ -65,18 +68,18 @@ export class LSDVO {
       }
     }
     // Push into deque for mapping
-    this.doMappingIteration(trackingNewFrame)
+    this.doMapping(trackingNewFrame)
   }
 
-  doMappingIteration(trackingNewFrame: Frame): void {
+  doMapping(trackingNewFrame: Frame): void {
     if (this.currentKeyFrame == null) {
-      console.error("doMappingIteration: currentKeyFrame is null!");
+      console.error("currentKeyFrame is null!");
       return;
     }
     // set mappingFrame
     if (this.tracker.trackingWasGood) {
       if (this.createNewKeyFrame) {
-        console.log("doMappingIteration: create new keyframe");
+        console.log("create new keyframe");
         if (this.mapping) {
           try {
             Constants.writePointCloudToFile(this.currentKeyFrame);
@@ -105,6 +108,6 @@ export class LSDVO {
   }
 
   getRefFrameScore(distanceSquared: number, usage: number): number {
-    return distanceSquared * 12 + (1 - usage) * (1 - usage) * 12;
+    return distanceSquared * Constants.frameScore + (1 - usage) * (1 - usage) * Constants.frameScore;
   }
 }
