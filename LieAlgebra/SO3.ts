@@ -173,6 +173,6 @@ export class SO3 {
   public assertNotNaN() {
     let array = this.ln();
     for (let i = 0; i < array.length; i++)
-      if (isNaN(array[i])) throw new Error("assert (!Double.isNaN(d));");
+      if (isNaN(array[i])) throw new Error("isNaN(d);");
   }
 }

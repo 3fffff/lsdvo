@@ -4,7 +4,6 @@ import { DepthMap } from "./DepthEstimation/DepthMap";
 import { Constants } from "./Utils/Constants";
 import { SE3 } from "./LieAlgebra/SE3";
 import { Vec } from "./LieAlgebra/Vec";
-import { TestDepth } from "./DepthEstimation/TestDepth";
 
 export class LSDVO {
   currentKeyFrame: Frame;
@@ -12,7 +11,6 @@ export class LSDVO {
   createNewKeyFrame: boolean = false;
   tracker: SE3Tracker;
   mapping: boolean = false;
-  debugDepth: TestDepth | null = null;
   debug: boolean
 
   constructor(mapping: boolean, debug: boolean) {
@@ -21,8 +19,7 @@ export class LSDVO {
   }
 
   randomInit(image: Float32Array, width: number, height: number): void {
-    this.map = new DepthMap(width, height);
-    this.debugDepth = this.debug ? new TestDepth(this.map) : null
+    this.map = new DepthMap(width, height, this.debug);
     this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
     this.currentKeyFrame = new Frame(image, width, height);
@@ -30,7 +27,7 @@ export class LSDVO {
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.debugDepth) this.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
+    if (this.map.debugDepth) this.map.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
     console.log("Done random initialization.");
   }
 
@@ -47,7 +44,7 @@ export class LSDVO {
     console.log(`lastBadCount:${this.tracker.lastBadCount}`);
     const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
     console.log(`dens:${this.currentKeyFrame.numPoints} good:${lastGoodperBed} usg:${this.tracker.pointUsage}`)
-    if (this.debugDepth) this.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
+    if (this.map.debugDepth) this.map.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
       console.log(`trackingWasGood:${this.tracker.trackingWasGood}`)
       console.log(`diverged:${this.tracker.diverged}`);
@@ -101,7 +98,7 @@ export class LSDVO {
   }
 
   createNewCurrentKeyframe(newKeyframeCandidate: Frame): void {
-    console.log("CREATE NEW KF %d from %d\n", newKeyframeCandidate.id, this.currentKeyFrame.id);
+    console.log(`CREATE NEW KF ${newKeyframeCandidate.id} from ${this.currentKeyFrame.id}`);
     this.createNewKeyFrame = false;
     this.map.createKeyFrame(newKeyframeCandidate);
     this.currentKeyFrame = newKeyframeCandidate;

@@ -1,7 +1,6 @@
 import { Constants } from '../Utils/Constants';
 import { SIM3 } from '../LieAlgebra/SIM3';
 import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothesis';
-import { Vec } from '../LieAlgebra/Vec';
 import { SE3 } from '../LieAlgebra/SE3';
 
 export class Frame {
@@ -18,11 +17,6 @@ export class Frame {
   static totalFrames: number = 0;
   public numMappablePixels = 0
   id: number = 0;
-  public K_otherToThis_R: Float32Array;
-  public K_otherToThis_t: Float32Array;
-  public otherToThis_t: Float32Array;
-  thisToOther_R: Float32Array;
-  thisToOther_t: Float32Array;
   public initialTrackedResidual: number = 0;
   public numFramesTrackedOnThis: number = 0;
   public numMappedOnThis: number = 0;
@@ -230,18 +224,6 @@ export class Frame {
     for (let y: number = 0; y < width * height; y += width * 2)
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
-  }
-
-  public prepareForStereoWith(thisToOther: SIM3): void {
-    let otherToThis: SIM3 = thisToOther.inverse();
-
-    this.K_otherToThis_R = Vec.matrixMul(Vec.mulMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
-      otherToThis.getScale());
-    this.otherToThis_t = otherToThis.getTranslation();
-    this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
-
-    this.thisToOther_t = thisToOther.getTranslation();
-    this.thisToOther_R = Vec.matrixMul(thisToOther.getRotationMatrix(), thisToOther.getScale());
   }
 
   /**

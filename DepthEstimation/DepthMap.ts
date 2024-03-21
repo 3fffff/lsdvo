@@ -4,6 +4,7 @@ import { Constants } from "../Utils/Constants";
 import { SIM3 } from "../LieAlgebra/SIM3";
 import { Vec } from "../LieAlgebra/Vec";
 import { SE3 } from "../LieAlgebra/SE3";
+import { TestDepth } from "./TestDepth";
 
 /**
  * Keeps a detailed depth map (consisting of DepthMapPixelHypothesis) and does
@@ -40,11 +41,18 @@ export class DepthMap {
   fx: number; fy: number; cx: number; cy: number;
   fxi: number; fyi: number; cxi: number; cyi: number;
 
-  constructor(w: number, h: number) {
+  K_otherToThis_R: Float32Array;
+  K_otherToThis_t: Float32Array;
+  otherToThis_t: Float32Array;
+  thisToOther_R: Float32Array;
+  thisToOther_t: Float32Array;
+  debugDepth: TestDepth | null;
+
+  constructor(w: number, h: number,debug:boolean) {
+    this.debugDepth = debug ? new TestDepth(this) : null
     this.width = w;
     this.height = h;
 
-    //this.activeKeyFrame = null;
     this.otherDepthMap = Array(this.width * this.height);
     this.currentDepthMap = Array(this.width * this.height);
 
@@ -137,7 +145,7 @@ export class DepthMap {
       //		assert (frame.id != 0);
       if (frame.kfID != this.activeKeyFrame.id) {
         console.log(
-          "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
+          "WARNING: updating frame %d with %d, which was tracked on a different frame (%d)."
           + "\nWhile this should work, it is not recommended.",
           this.activeKeyFrame.id, frame.id, frame.kfID);
       }
@@ -150,8 +158,16 @@ export class DepthMap {
         refToKf = this.activeKeyFrame.camToWorld.inverse().mul(frame.camToWorld);
       }
 
-      // prepare frame for stereo with keyframe, SE3, K, level
-      frame.prepareForStereoWith(refToKf);
+      // prepareForStereoWith prepare frame for stereo with keyframe, SE3, K, level
+      const otherToThis: SIM3 = refToKf.inverse();
+
+      this.K_otherToThis_R = Vec.matrixMul(Vec.mulMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
+        otherToThis.getScale());
+      this.otherToThis_t = otherToThis.getTranslation();
+      this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
+
+      this.thisToOther_t = refToKf.getTranslation();
+      this.thisToOther_R = Vec.matrixMul(refToKf.getRotationMatrix(), refToKf.getScale());
 
       while (this.referenceFrameByID.length + this.referenceFrameByID_offset <= frame.id) {
         this.referenceFrameByID.push(frame);
@@ -188,6 +204,8 @@ export class DepthMap {
    * @param yMax
    */
   observeDepthRow(yMin: number, yMax: number): void {
+    this.debugDepth?.stereoDebug();
+
     let keyFrameMaxGradBuf: Float32Array = this.activeKeyFrame.imageGradientMaxArrayLvl[0];
 
     // For each row assigned
@@ -222,6 +240,7 @@ export class DepthMap {
       }
     }
   }
+
   observeDepthCreate(x: number, y: number, idx: number): boolean {
     let target: DepthMapPixelHypothesis = this.currentDepthMap[idx];
 
@@ -417,8 +436,8 @@ export class DepthMap {
     // calculate the plane spanned by the two camera centers and the point
     // (x,y,1)
     // intersect it with the keyframe's image plane (at depth=1)
-    let epx: number = -this.fx * ref.thisToOther_t[0] + ref.thisToOther_t[2] * (x - this.cx);
-    let epy: number = -this.fy * ref.thisToOther_t[1] + ref.thisToOther_t[2] * (y - this.cy);
+    let epx: number = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
+    let epy: number = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
 
     if (isNaN(epx + epy)) {
       return null;
@@ -470,14 +489,15 @@ export class DepthMap {
   /**
    * Returns float[4] array, {error, result_idepth, result_var, result_eplLength}
    */
+
   doLineStereo(u: number, v: number, epxn: number, epyn: number, min_idepth: number, prior_idepth: number,
     max_idepth: number, referenceFrame: Frame, referenceFrameImage: Float32Array, result_idepth: number, result_var: number,
     result_eplLength: number): Float32Array {
 
     // calculate epipolar line start and end point in old image
     let KinvP: Float32Array = new Float32Array([this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0]);
-    let pInf: Float32Array = Vec.matVecMultiplySqr(referenceFrame.K_otherToThis_R, KinvP, 3);
-    let pReal: Float32Array = Vec.vecAdd2(Vec.scalarDel(pInf, prior_idepth), referenceFrame.K_otherToThis_t);
+    let pInf: Float32Array = Vec.matVecMultiplySqr(this.K_otherToThis_R, KinvP, 3);
+    let pReal: Float32Array = Vec.vecAdd2(Vec.scalarDel(pInf, prior_idepth), this.K_otherToThis_t);
 
     let rescaleFactor: number = (pReal[2] * prior_idepth);
 
@@ -510,17 +530,17 @@ export class DepthMap {
     let realVal_p2: number = Vec.interpolatedValue(activeKeyFrameImageData, u + 2 * epxn * rescaleFactor,
       v + 2 * epyn * rescaleFactor, this.width);
 
-    let pClose: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(referenceFrame.K_otherToThis_t, max_idepth));
+    let pClose: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(this.K_otherToThis_t, max_idepth));
     // if the assumed close-point lies behind the
     // image, have to change that.
     if (pClose[2] < 0.001) {
-      max_idepth = ((0.001 - pInf[2]) / referenceFrame.K_otherToThis_t[2]);
-      pClose = Vec.vecAdd2(Vec.scalarMult2(referenceFrame.K_otherToThis_t, max_idepth), pInf);
+      max_idepth = ((0.001 - pInf[2]) / this.K_otherToThis_t[2]);
+      pClose = Vec.vecAdd2(Vec.scalarMult2(this.K_otherToThis_t, max_idepth), pInf);
     }
     pClose = Vec.scalarDel(pClose, pClose[2]); // pos in new image of point
     // (xy), assuming max_idepth
 
-    let pFar: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(referenceFrame.K_otherToThis_t, min_idepth));
+    let pFar: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(this.K_otherToThis_t, min_idepth));
     // if the assumed far-point lies behind the image or closter than the
     // near-point,
     // we moved past the Point it and should stop.
@@ -858,27 +878,27 @@ export class DepthMap {
     // inverse depth derived by the pixel-disparity.
     if (incx * incx > incy * incy) {
       let oldX: number = this.fxi * best_match_x + this.cxi;
-      let nominator: number = (oldX * referenceFrame.otherToThis_t[2] - referenceFrame.otherToThis_t[0]);
+      let nominator: number = (oldX * this.otherToThis_t[2] - this.otherToThis_t[0]);
 
-      let dot0: number = Vec.dot(KinvP, Vec.getCol(referenceFrame.thisToOther_R, 0, 3));
-      let dot2: number = Vec.dot(KinvP, Vec.getCol(referenceFrame.thisToOther_R, 2, 3));
+      let dot0: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 0, 3));
+      let dot2: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 2, 3));
 
       idnew_best_match = (dot0 - oldX * dot2) / nominator;
       alpha = (incx * this.fxi
-        * (dot0 * referenceFrame.otherToThis_t[2] - dot2 * referenceFrame.otherToThis_t[0])
+        * (dot0 * this.otherToThis_t[2] - dot2 * this.otherToThis_t[0])
         / (nominator * nominator));
 
     } else {
       let oldY: number = this.fyi * best_match_y + this.cyi;
 
-      let nominator: number = (oldY * referenceFrame.otherToThis_t[2] - referenceFrame.otherToThis_t[1]);
+      let nominator: number = (oldY * this.otherToThis_t[2] - this.otherToThis_t[1]);
 
-      let dot1: number = Vec.dot(KinvP, Vec.getCol(referenceFrame.thisToOther_R, 1, 3));
-      let dot2: number = Vec.dot(KinvP, Vec.getCol(referenceFrame.thisToOther_R, 2, 3));
+      let dot1: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 1, 3));
+      let dot2: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 2, 3));
 
       idnew_best_match = (dot1 - oldY * dot2) / nominator;
       alpha = (incy * this.fyi
-        * (dot1 * referenceFrame.otherToThis_t[2] - dot2 * referenceFrame.otherToThis_t[1])
+        * (dot1 * this.otherToThis_t[2] - dot2 * this.otherToThis_t[1])
         / (nominator * nominator));
 
     }
@@ -1017,10 +1037,8 @@ export class DepthMap {
   }
 
   copyDepthMapArray(): void {
-    this.otherDepthMap = this.currentDepthMap.slice()
-    console.log(this.otherDepthMap)
-    //for (let i = 0; i < this.currentDepthMap.length; i++)
-    //  this.otherDepthMap[i] = this.currentDepthMap[i];
+    for (let i = 0; i < this.currentDepthMap.length; i++)
+      this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {
@@ -1179,8 +1197,6 @@ export class DepthMap {
 
         if (!source.isValid) continue;
 
-        console.log("source valid")
-
         let r: Float32Array = new Float32Array([x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0]);
 
         let pn: Float32Array = Vec.vecAdd2(Vec.scalarDel(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
@@ -1260,9 +1276,9 @@ export class DepthMap {
       }
 
     // swap!
-    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap.slice();
-    this.currentDepthMap = this.otherDepthMap.slice();
-    this.otherDepthMap = temp.slice();
+    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap;
+    this.currentDepthMap = this.otherDepthMap;
+    this.otherDepthMap = temp;
   }
 
   /*

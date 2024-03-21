@@ -5,5 +5,6 @@ module.exports = {
   output: {
     filename: 'index.js',
     library: "LSD",
-  }
+  },
+  mode: 'development'
 };
