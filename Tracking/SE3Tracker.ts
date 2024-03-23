@@ -41,6 +41,7 @@ export class SE3Tracker {
   bufInvDepth: Float32Array;
   bufInvDepthVariance: Float32Array;
   bufWeightP: Float32Array;
+  calculateResidualAndBuffersCount: number = 0;
 
   constructor(width: number, height: number) {
     // Set lambdaInitial values to 0
@@ -206,21 +207,23 @@ export class SE3Tracker {
   calculateResidualAndBuffers(posData: Array<Float32Array>, colorAndVarData: Array<Float32Array>, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
-    const fx: number = Constants.fx[level];
-    const fy: number = Constants.fy[level];
-    const cx: number = Constants.cx[level];
-    const cy: number = Constants.cy[level];
+    this.calculateResidualAndBuffersCount++;
+
+    let fx: number = Constants.fx[level];
+    let fy: number = Constants.fy[level];
+    let cx: number = Constants.cx[level];
+    let cy: number = Constants.cy[level];
 
     // Get rotation, translation matrix
-    const rotationMat: Float32Array = frameToRefPose.getRotationMatrix();
-    const translationVec: Float32Array = frameToRefPose.getTranslation();
+    let rotationMat: Float32Array = frameToRefPose.getRotationMatrix();
+    let translationVec: Float32Array = frameToRefPose.getTranslation();
     let sumResUnweighted: number = 0;
     let goodCount: number = 0;
     let badCount: number = 0;
     let sumSignedRes: number = 0;
     // what?
     let usageCount: number = 0;
-    let warpInd = 0;
+    this.warpedCount = 0;
     let numValidPoints: number = 0;
     // int inImage = 0;
     // For each point in point cloud
@@ -246,34 +249,34 @@ export class SE3Tracker {
       }
 
       // Interpolated intensity, gradient X,Y.
-      const interpolatedIntensity: number = Vec.interpolatedValue(frame.imageArrayLvl[level], u, v,
+      let interpolatedIntensity: number = Vec.interpolatedValue(frame.imageArrayLvl[level], u, v,
         frame.width(level));
-      const interpolatedGradientX: number = Vec.interpolatedValue(frame.imageGradientXArrayLvl[level], u, v,
+      let interpolatedGradientX: number = Vec.interpolatedValue(frame.imageGradientXArrayLvl[level], u, v,
         frame.width(level));
-      const interpolatedGradientY: number = Vec.interpolatedValue(frame.imageGradientYArrayLvl[level], u, v,
+      let interpolatedGradientY: number = Vec.interpolatedValue(frame.imageGradientYArrayLvl[level], u, v,
         frame.width(level));
 
-      const residual: number = colorAndVarData[i][0] - interpolatedIntensity;
-      const squaredResidual: number = residual * residual;
+      let residual: number = colorAndVarData[i][0] - interpolatedIntensity;
+      let squaredResidual: number = residual * residual;
 
       // Set buffers
-      this.bufWarpedResidual[warpInd] = residual;
+      this.bufWarpedResidual[this.warpedCount] = residual;
 
-      this.bufWarpedDx[warpInd] = (fx * interpolatedGradientX);
-      this.bufWarpedDy[warpInd] = (fy * interpolatedGradientY);
+      this.bufWarpedDx[this.warpedCount] = (fx * interpolatedGradientX);
+      this.bufWarpedDy[this.warpedCount] = (fy * interpolatedGradientY);
 
-      this.bufWarpedX[warpInd] = warpedPoint[0];
-      this.bufWarpedY[warpInd] = warpedPoint[1];
-      this.bufWarpedZ[warpInd] = warpedPoint[2];
-      this.bufInvDepth[warpInd] = (1.0 / point[2]);
-      this.bufInvDepthVariance[warpInd] = colorAndVarData[i][1];
+      this.bufWarpedX[this.warpedCount] = warpedPoint[0];
+      this.bufWarpedY[this.warpedCount] = warpedPoint[1];
+      this.bufWarpedZ[this.warpedCount] = warpedPoint[2];
+      this.bufInvDepth[this.warpedCount] = (1.0 / point[2]);
+      this.bufInvDepthVariance[this.warpedCount] = colorAndVarData[i][1];
 
       // Increase warpCount
-      warpInd++;
+      this.warpedCount += 1;
 
       // Condition related to gradient and residual, to determine if to
       // use the residual from this pixel or not.
-      const isGood: boolean = squaredResidual / (Constants.MAX_DIFF_CONSTANT
+      let isGood: boolean = squaredResidual / (Constants.MAX_DIFF_CONSTANT
         + Constants.MAX_DIFF_GRAD_MULT * (interpolatedGradientX * interpolatedGradientX
           + interpolatedGradientY * interpolatedGradientY)) < 1;
 
@@ -284,13 +287,13 @@ export class SE3Tracker {
       } else badCount++;
 
       // Change in depth
-      const depthChange: number = (point[2] / warpedPoint[2]); // if depth becomes larger: pixel becomes
+      let depthChange: number = (point[2] / warpedPoint[2]); // if depth becomes larger: pixel becomes
       // "smaller", hence count it less.
       // Pixels used?
       usageCount += depthChange < 1 ? depthChange : 1;
 
     }
-    this.warpedCount = warpInd;
+
     this.pointUsage = usageCount / numValidPoints;
     this.lastGoodCount = goodCount;
     this.lastBadCount = badCount;
@@ -304,28 +307,28 @@ export class SE3Tracker {
    * @return sum of weighted residuals divided by warpedCount
    */
   calculateWeightsAndResidual(referenceToFrame: SE3): number {
-    const [tx, ty, tz] = referenceToFrame.getTranslation();
+    let [tx, ty, tz] = referenceToFrame.getTranslation();
     let sumRes: number = 0;
 
     for (let i = 0; i < this.warpedCount; i++) {
-      const px: number = this.bufWarpedX[i]; // x'
-      const py: number = this.bufWarpedY[i]; // y'
-      const pz: number = this.bufWarpedZ[i]; // z'
-      const d: number = this.bufInvDepth[i]; // d
-      const rp: number = this.bufWarpedResidual[i]; // r_p
-      const gx: number = this.bufWarpedDx[i]; // \delta_x I
-      const gy: number = this.bufWarpedDy[i]; // \delta_y I
-      const s: number = this.varWeight * this.bufInvDepthVariance[i]; // \sigma_d^2
+      let px: number = this.bufWarpedX[i]; // x'
+      let py: number = this.bufWarpedY[i]; // y'
+      let pz: number = this.bufWarpedZ[i]; // z'
+      let d: number = this.bufInvDepth[i]; // d
+      let rp: number = this.bufWarpedResidual[i]; // r_p
+      let gx: number = this.bufWarpedDx[i]; // \delta_x I
+      let gy: number = this.bufWarpedDy[i]; // \delta_y I
+      let s: number = this.varWeight * this.bufInvDepthVariance[i]; // \sigma_d^2
 
       // calc dw/dd (first 2 components):
-      const g0: number = (tx * pz - tz * px) / (pz * pz * d);
-      const g1: number = (ty * pz - tz * py) / (pz * pz * d);
+      let g0: number = (tx * pz - tz * px) / (pz * pz * d);
+      let g1: number = (ty * pz - tz * py) / (pz * pz * d);
 
       // calc w_p
-      const drpdd: number = gx * g0 + gy * g1; // ommitting the minus
-      const w_p: number = 1.0 / ((this.cameraPixelNoise2) + s * drpdd * drpdd);
-      const weighted_rp: number = Math.abs(rp * Math.sqrt(w_p));
-      const wh: number = Math.abs(weighted_rp < (this.huberD / 2) ? 1 : (this.huberD / 2) / weighted_rp);
+      let drpdd: number = gx * g0 + gy * g1; // ommitting the minus
+      let w_p: number = 1.0 / ((this.cameraPixelNoise2) + s * drpdd * drpdd);
+      let weighted_rp: number = Math.abs(rp * Math.sqrt(w_p));
+      let wh: number = Math.abs(weighted_rp < (this.huberD / 2) ? 1 : (this.huberD / 2) / weighted_rp);
       sumRes += wh * w_p * rp * rp;
 
       // Set weight into buffer

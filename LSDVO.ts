@@ -9,9 +9,10 @@ export class LSDVO {
   currentKeyFrame: Frame;
   map: DepthMap;
   createNewKeyFrame: boolean = false;
-  tracker: SE3Tracker;
+  tracker: SE3Tracker
+  numkeyframes: number = 0
   mapping: boolean = false;
-  debug: boolean
+  debug: boolean = true;
 
   constructor(mapping: boolean, debug: boolean) {
     this.debug = debug
@@ -27,7 +28,7 @@ export class LSDVO {
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.map.debugDepth) this.map.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
     console.log("Done random initialization.");
   }
 
@@ -38,24 +39,25 @@ export class LSDVO {
     [this.currentKeyFrame.trackedOnPoses.length - 1] : new SE3();
 
     console.time("track")
-    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame, frameToReference_initialEstimate);
+    let newRefToFrame_poseUpdate: SE3 = this.tracker.trackFrame(this.currentKeyFrame, trackingNewFrame,
+      frameToReference_initialEstimate);
     console.timeEnd("track")
-    console.log(`lastGoodCount:${this.tracker.lastGoodCount}`);
-    console.log(`lastBadCount:${this.tracker.lastBadCount}`);
+    console.log("lastGoodCount " + this.tracker.lastGoodCount);
+    console.log("lastBadCount " + this.tracker.lastBadCount);
     const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
-    console.log(`dens:${this.currentKeyFrame.numPoints} good:${lastGoodperBed} usg:${this.tracker.pointUsage}`)
-    if (this.map.debugDepth) this.map.debugDepth.debugPlotDepthMap(this.currentKeyFrame);
+    console.log("dens:" + this.currentKeyFrame.numPoints + ";good:" + lastGoodperBed + ";usg:" + this.tracker.pointUsage)
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
-      console.log(`trackingWasGood:${this.tracker.trackingWasGood}`)
-      console.log(`diverged:${this.tracker.diverged}`);
+      console.log("trackingWasGood: " + this.tracker.trackingWasGood)
+      console.log("diverged: " + this.tracker.diverged);
       return;
     }
     // Keyframe selection
     if (!this.createNewKeyFrame && this.currentKeyFrame.numMappedOnThis > Constants.MIN_NUM_MAPPED) {
 
       let dist: Float32Array = Vec.scalarMult2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
-      let minVal: number = Math.min(0.2 + Frame.totalFrames * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
-      if (Frame.totalFrames < Constants.INITIALIZATION_PHASE_COUNT)
+      let minVal: number = Math.min(0.2 + this.numkeyframes * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
+      if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
 
       if (this.getRefFrameScore(Vec.dot(dist, dist), this.tracker.pointUsage) > minVal) {
@@ -65,46 +67,47 @@ export class LSDVO {
       }
     }
     // Push into deque for mapping
-    this.doMapping(trackingNewFrame)
+    this.doMappingIteration(trackingNewFrame)
   }
 
-  doMapping(trackingNewFrame: Frame): void {
+  doMappingIteration(trackingNewFrame: Frame): void {
     if (this.currentKeyFrame == null) {
       console.error("currentKeyFrame is null!");
       return;
     }
+    console.time("updatekeyframe")
+    this.map.updateKeyframe([trackingNewFrame]);
+    console.timeEnd("updatekeyframe")
     // set mappingFrame
-    if (this.tracker.trackingWasGood) {
-      if (this.createNewKeyFrame) {
-        console.log("create new keyframe");
-        if (this.mapping) {
-          try {
-            Constants.writePointCloudToFile(this.currentKeyFrame);
-          } catch (e) {
-            console.log(e)
-          }
+    if (this.tracker.trackingWasGood && this.createNewKeyFrame) {
+      console.log("create new keyframe");
+      if (this.mapping) {
+        try {
+          Constants.writePointCloudToFile(this.currentKeyFrame);
+        } catch (e) {
+          console.log(e)
         }
-        // create new key frame
-        console.log("FINALIZING KF: " + this.currentKeyFrame.id);
-        this.map.finalizeKeyFrame();
-        this.createNewCurrentKeyframe(trackingNewFrame);
-      } else {
-        console.time("updatekeyframe")
-        this.map.updateKeyframe([trackingNewFrame]);
-        console.timeEnd("updatekeyframe")
-        trackingNewFrame.clearData()
       }
-    }
+      // create new key frame
+      this.finishCurrentKeyframe();
+      this.createNewCurrentKeyframe(trackingNewFrame);
+    } else trackingNewFrame.clearData()
+  }
+
+  finishCurrentKeyframe(): void {
+    console.log("FINALIZING KF: " + this.currentKeyFrame.id);
+    this.map.finalizeKeyFrame();
+    this.numkeyframes++
   }
 
   createNewCurrentKeyframe(newKeyframeCandidate: Frame): void {
-    console.log(`CREATE NEW KF ${newKeyframeCandidate.id} from ${this.currentKeyFrame.id}`);
+    console.log("CREATE NEW KF %d from %d\n", newKeyframeCandidate.id, this.currentKeyFrame.id);
     this.createNewKeyFrame = false;
     this.map.createKeyFrame(newKeyframeCandidate);
     this.currentKeyFrame = newKeyframeCandidate;
   }
 
   getRefFrameScore(distanceSquared: number, usage: number): number {
-    return distanceSquared * Constants.frameScore + (1 - usage) * (1 - usage) * Constants.frameScore;
+    return distanceSquared * 12 + (1 - usage) * (1 - usage) * 12;
   }
 }

@@ -1,10 +1,10 @@
 module.exports = {
   entry: {
-    EntryPoint: './index.js'
+    EntryPoint: './dist/index.js'
   },
+  devtool: 'source-map',
   output: {
-    filename: 'index.js',
+    filename: 'bundle.js',
     library: "LSD",
   },
-  mode: 'development'
 };

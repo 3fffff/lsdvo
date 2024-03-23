@@ -3,41 +3,41 @@ export class DepthMapPixelHypothesis {
    * Flag telling if there is a valid estimate at this point. All other values are
    * only valid if this is set to true.
    */
-  public isValid: boolean = false;
+  public isValid: boolean;
 
   /**
    * Flag that blacklists a point to never be used - set if stereo fails
    * repeatedly on this pixel.
    */
-  public blacklisted: number = 0;
+  public blacklisted: number;
 
   /**
    * How many frames to skip ahead in the tracked-frames-queue.
    */
-  public nextStereoFrameMinID: number = 0;
+  public nextStereoFrameMinID: number;
 
   /**
    * Counter for validity, basically how many successful observations are
    * incorporated.
    */
-  public validity_counter: number = 0;
+  public validity_counter: number;
 
   /**
    * Actual Gaussian Distribution.
    */
-  public idepth: number = 0;
+  public idepth: number;
 
-  public idepth_var: number = 0;
+  public idepth_var: number;
 
   /**
    * Smoothed Gaussian Distribution.
    */
-  public idepth_smoothed: number = 0;
+  public idepth_smoothed: number;
 
-  public idepth_var_smoothed: number = 0;
+  public idepth_var_smoothed: number;
 
 
-  public constructor(idepth?: any, idepth_smoothed?: number, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
+  public constructor(idepth?: any, idepth_smoothed?: any, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
     if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && ((typeof idepth_var_smoothed === 'number') || idepth_var_smoothed === null) && ((typeof my_validity_counter === 'number') || my_validity_counter === null)) {
       this.isValid = true;
       this.blacklisted = 0;
@@ -68,11 +68,14 @@ export class DepthMapPixelHypothesis {
       this.idepth_var = idepth.idepth_var;
       this.idepth_smoothed = idepth.idepth_smoothed;
       this.idepth_var_smoothed = idepth.idepth_var_smoothed;
+    } else {
+      this.isValid = false;
+      this.blacklisted = 0;
     }
   }
 
-  getVisualizationColor(color:number): Uint8Array {
-    if (color === 0 || color === 1) {
+  getVisualizationColor(debugDisplay: number): Uint8Array {
+    if (debugDisplay === 0 || debugDisplay === 1) {
       let id: number = this.idepth_smoothed;
       if (id < 0) return new Uint8Array([255, 255, 255]);
       let r: number = (0.0 - id) * 255.0 / 1.0;
@@ -86,14 +89,14 @@ export class DepthMapPixelHypothesis {
       let bc: number = (b < 0 ? 0 : (b > 255 ? 255 : b));
       return new Uint8Array([(255 - rc), (255 - gc), (255 - bc)]);
     }
-    if (color === 2) {
-      let f: number = this.validity_counter * (255.0 / (color + color));
+    if (debugDisplay === 2) {
+      let f: number = this.validity_counter * (255.0 / (2 * debugDisplay));
       let v: number = (f < 0 ? 0 : (f > 255 ? 255 : f));
       return new Uint8Array([0, v, v]);
     }
-    if (color === 3 || color === 4) {
+    if (debugDisplay === 3 || debugDisplay === 4) {
       let idv: number;
-      if (color === 3) idv = this.idepth_var_smoothed; else idv = this.idepth_var;
+      if (debugDisplay === 3) idv = this.idepth_var_smoothed; else idv = this.idepth_var;
       let _var: number = -0.5 * (x => Math.log(x) * Math.LOG10E)(idv);
       _var = _var * 255 * 0.333;
       if (_var > 255) _var = 255;

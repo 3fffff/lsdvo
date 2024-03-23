@@ -91,7 +91,7 @@ export class SIM3 {
     result[6] = s;
     let coeff: Float32Array = SIM3.compute_rodrigues_coefficients_sim3(s, theta);
     let cross: Float32Array = SIM3.cross_product_matrix(rotResult);
-    let W: Float32Array = Vec.matrixAdd(Vec.matrixAdd((Vec.matrixMul(Vec.matrixEye(3), coeff[0])), (Vec.matrixMul(cross, coeff[1]))), (Vec.matrixMul(Vec.mulMatrix(cross, cross, 3, 3, 3, 3), coeff[2])));
+    let W: Float32Array = Vec.matrixAdd(Vec.matrixAdd((Vec.matrixMul(Vec.matrixEye(3), coeff[0])), (Vec.matrixMul(cross, coeff[1]))), (Vec.matrixMul(Vec.multMatrix(cross, cross, 3, 3, 3, 3), coeff[2])));
     let transResultMat: Float32Array = Vec.solveSystem(W, sim3.getTranslation());
     result[0] = transResultMat[0];
     result[1] = transResultMat[1];

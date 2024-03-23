@@ -4,9 +4,10 @@ import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothe
 import { SE3 } from '../LieAlgebra/SE3';
 
 export class Frame {
-  public isKF: boolean = false;
   _width: number = 0;
   _height: number = 0;
+  id: number = 0;
+  public isKF: boolean = false;
   public imageArrayLvl: Array<Float32Array>;
   public imageGradientXArrayLvl: Array<Float32Array>;
   public imageGradientYArrayLvl: Array<Float32Array>;
@@ -16,7 +17,6 @@ export class Frame {
   public IDepthBeenSet: boolean = false;
   static totalFrames: number = 0;
   public numMappablePixels = 0
-  id: number = 0;
   public initialTrackedResidual: number = 0;
   public numFramesTrackedOnThis: number = 0;
   public numMappedOnThis: number = 0;

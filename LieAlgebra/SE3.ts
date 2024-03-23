@@ -133,7 +133,7 @@ export class SE3 {
    */
   public mulEq(se3: SE3) {
     this.translation = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
-    this.rotation.matrix = Vec.mulMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
+    this.rotation.matrix = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     this.assertNotNaN();
   }
 
@@ -144,14 +144,14 @@ export class SE3 {
    */
   public mul(se3: SE3): SE3 {
     let translation: Float32Array = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
-    let rotation: Float32Array = Vec.mulMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
+    let rotation: Float32Array = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     return new SE3(new SO3(rotation), translation);
   }
 
   public assertNotNaN() {
-    if (isNaN(this.translation[0])) throw new Error("translation[0]");
-    if (isNaN(this.translation[1])) throw new Error("translation[1]");
-    if (isNaN(this.translation[2])) throw new Error("translation[2]");
+    if (isNaN(this.translation[0])) throw new Error("(isNaN(this.translation[0]));");
+    if (isNaN(this.translation[1])) throw new Error("(isNaN(this.translation[1]));");
+    if (isNaN(this.translation[2])) throw new Error("(isNaN(this.translation[2]));");
     this.rotation.assertNotNaN();
   }
 }

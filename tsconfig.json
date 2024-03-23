@@ -23,6 +23,7 @@
     "allowUnreachableCode": false,
     "experimentalDecorators": true,
     "downlevelIteration": true,
-    "strict": false
+    "strict": false,
+    "outDir": "dist",
   }
 }

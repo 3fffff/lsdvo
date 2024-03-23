@@ -40,7 +40,6 @@ export class DepthMap {
   // Camera matrix
   fx: number; fy: number; cx: number; cy: number;
   fxi: number; fyi: number; cxi: number; cyi: number;
-
   K_otherToThis_R: Float32Array;
   K_otherToThis_t: Float32Array;
   otherToThis_t: Float32Array;
@@ -49,10 +48,12 @@ export class DepthMap {
   debugDepth: TestDepth | null;
 
   constructor(w: number, h: number,debug:boolean) {
-    this.debugDepth = debug ? new TestDepth(this) : null
     this.width = w;
     this.height = h;
 
+    this.debugDepth = debug ? new TestDepth(this) : null
+
+    //this.activeKeyFrame = null;
     this.otherDepthMap = Array(this.width * this.height);
     this.currentDepthMap = Array(this.width * this.height);
 
@@ -145,7 +146,7 @@ export class DepthMap {
       //		assert (frame.id != 0);
       if (frame.kfID != this.activeKeyFrame.id) {
         console.log(
-          "WARNING: updating frame %d with %d, which was tracked on a different frame (%d)."
+          "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
           + "\nWhile this should work, it is not recommended.",
           this.activeKeyFrame.id, frame.id, frame.kfID);
       }
@@ -158,14 +159,16 @@ export class DepthMap {
         refToKf = this.activeKeyFrame.camToWorld.inverse().mul(frame.camToWorld);
       }
 
-      // prepareForStereoWith prepare frame for stereo with keyframe, SE3, K, level
-      const otherToThis: SIM3 = refToKf.inverse();
+      // prepare frame for stereo with keyframe, SE3, K, level
+      //frame.prepareForStereoWith(refToKf);
 
-      this.K_otherToThis_R = Vec.matrixMul(Vec.mulMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
+      let otherToThis: SIM3 = refToKf.inverse();
+
+      this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
         otherToThis.getScale());
       this.otherToThis_t = otherToThis.getTranslation();
       this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
-
+  
       this.thisToOther_t = refToKf.getTranslation();
       this.thisToOther_R = Vec.matrixMul(refToKf.getRotationMatrix(), refToKf.getScale());
 
@@ -205,7 +208,6 @@ export class DepthMap {
    */
   observeDepthRow(yMin: number, yMax: number): void {
     this.debugDepth?.stereoDebug();
-
     let keyFrameMaxGradBuf: Float32Array = this.activeKeyFrame.imageGradientMaxArrayLvl[0];
 
     // For each row assigned
@@ -240,7 +242,6 @@ export class DepthMap {
       }
     }
   }
-
   observeDepthCreate(x: number, y: number, idx: number): boolean {
     let target: DepthMapPixelHypothesis = this.currentDepthMap[idx];
 
@@ -248,6 +249,17 @@ export class DepthMap {
     // What is activeKeyFrameIsReactivated?
     // Key frame was used before?
     let refFrame: Frame = this.activeKeyFrameIsReactivated ? this.newest_referenceFrame : this.oldest_referenceFrame;
+
+    // Frame tracked against activeKeyFrame?
+    /*if (refFrame.kfID == this.activeKeyFrame.id) {
+      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
+
+      // Check if pixel is good during tracking?
+      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
+        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
+        return false;
+      }
+    }*/
 
     // Get epipolar line??
     let epx: number, epy: number;
@@ -310,6 +322,14 @@ export class DepthMap {
       refFrame = this.newest_referenceFrame;
     }
 
+    /*if (refFrame.kfID == this.activeKeyFrame.id) {
+      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
+
+      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
+        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
+        return false;
+      }
+    }*/
 
     // Get epipolar line
     let epx: number, epy: number;
@@ -421,6 +441,7 @@ export class DepthMap {
 
         target.nextStereoFrameMinID = refFrame.id + inc;
       }
+
       return true;
     }
   }
@@ -489,7 +510,6 @@ export class DepthMap {
   /**
    * Returns float[4] array, {error, result_idepth, result_var, result_eplLength}
    */
-
   doLineStereo(u: number, v: number, epxn: number, epyn: number, min_idepth: number, prior_idepth: number,
     max_idepth: number, referenceFrame: Frame, referenceFrameImage: Float32Array, result_idepth: number, result_var: number,
     result_eplLength: number): Float32Array {
@@ -1037,8 +1057,13 @@ export class DepthMap {
   }
 
   copyDepthMapArray(): void {
-    for (let i = 0; i < this.currentDepthMap.length; i++)
-      this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
+    for (let i = 0; i < this.currentDepthMap.length; i++) {
+      if (this.currentDepthMap[i]) {
+        this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
+      } else {
+        console.log("no currentDepthMap")
+      }
+    }
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {
@@ -1154,7 +1179,8 @@ export class DepthMap {
     let rescaleFactor: number = numIdepth / sumIdepth;
     let rescaleFactor2: number = rescaleFactor * rescaleFactor;
     for (let i = 0; i < this.width * this.height; i++) {
-      if (!this.currentDepthMap[i].isValid) continue;
+      if (!this.currentDepthMap[i].isValid)
+        continue;
       this.currentDepthMap[i].idepth *= rescaleFactor;
       this.currentDepthMap[i].idepth_smoothed *= rescaleFactor;
       this.currentDepthMap[i].idepth_var *= rescaleFactor2;
@@ -1169,14 +1195,16 @@ export class DepthMap {
 
   propagateDepth(new_keyframe: Frame): void {
     if (new_keyframe.kfID != this.activeKeyFrame.id) {
-      console.log(`WARNING: propagating depth from frame ${this.activeKeyFrame.id} to ${new_keyframe.id}, 
-        which was tracked on a different frame (${new_keyframe.kfID}).\nWhile this should work, it is not recommended.`);
+      console.log(
+        "WARNING: propagating depth from frame %d to %d, which was tracked on a different frame (%d).\nWhile this should work, it is not recommended.",
+        this.activeKeyFrame.id, new_keyframe.id, new_keyframe.kfID);
     }
 
     // wipe depthmap
     for (let i = this.width * this.height - 1; i >= 0; i--) {
-      this.otherDepthMap[i].isValid = false;
-      this.otherDepthMap[i].blacklisted = 0;
+      let pt: DepthMapPixelHypothesis = this.otherDepthMap[i];
+      pt.isValid = false;
+      pt.blacklisted = 0;
     }
 
     // re-usable values.
@@ -1195,7 +1223,8 @@ export class DepthMap {
       for (let x = 0; x < this.width; x++) {
         let source: DepthMapPixelHypothesis = this.currentDepthMap[x + y * this.width];
 
-        if (!source.isValid) continue;
+        if (!source.isValid)
+          continue;
 
         let r: Float32Array = new Float32Array([x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0]);
 
@@ -1215,6 +1244,13 @@ export class DepthMap {
         let newIDX: number = Math.floor(u_new + 0.5) + (Math.floor(v_new + 0.5)) * this.width;
         let destAbsGrad: number = newKFMaxGrad[newIDX];
 
+        /* if (trackingWasGood != null) {
+           if (!trackingWasGood[(x >> Constants.SE3TRACKING_MIN_LEVEL)
+             + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]
+             || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
+             continue;
+           }
+         } else {*/
         let sourceColor: number = activeKFImageData[x + y * this.width];
         let destColor: number = Vec.interpolatedValue(newKFImageData, u_new, v_new, this.width);
 
@@ -1276,11 +1312,10 @@ export class DepthMap {
       }
 
     // swap!
-    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap;
-    this.currentDepthMap = this.otherDepthMap;
-    this.otherDepthMap = temp;
+    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap.slice();
+    this.currentDepthMap = this.otherDepthMap.slice();
+    this.otherDepthMap = temp.slice();
   }
-
   /*
    * Make val non-zero
    */
