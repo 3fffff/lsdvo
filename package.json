@@ -4,6 +4,10 @@
   "description": "A Javascript library for visual odometry on browsers",
   "main": "LSDVO.js",
   "browser": "./dist/lsdvo.min.js",
+  "scripts": {
+    "devbuild":"tsc && .//node_modules//.bin//esbuild .//dist//index.js --bundle --outfile=dist/debug.js --global-name=LSD --minify --sourcemap",
+    "build":"tsc && .//node_modules//.bin//esbuild index.js --bundle --outfile=dist/bundle.js --global-name=LSD --minify"
+  },
   "repository": {
     "type": "git",
     "url": ""
@@ -14,10 +18,7 @@
   "author": "3fffff",
   "license": "",
   "devDependencies": {
-    "ts-loader": "^6.0.2",
-    "tslint": "^5.17.0",
-    "webpack": "^5.90.3",
-    "webpack-cli": "^5.0.1"
+    "esbuild": "0.20.2"
   },
   "dependencies": {
     "typescript": "^5.4.2"

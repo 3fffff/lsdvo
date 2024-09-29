@@ -10,20 +10,34 @@ export class LSDVO {
   map: DepthMap;
   createNewKeyFrame: boolean = false;
   tracker: SE3Tracker
-  numkeyframes: number = 0
+  numkeyframes: number = 0;
+  isInitialized = false;
   mapping: boolean = false;
+  frameID: number = 0
   debug: boolean = true;
 
-  constructor(mapping: boolean, debug: boolean) {
+  constructor(K: Float32Array, mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
+    console.log(K)
+    Constants.setK(K[0], K[1], K[2], K[3]);
+  }
+
+  track(image: Float32Array, width: number, height: number): void {
+    console.log("-------\nFrame " + this.frameID + "\n-------");
+    if (!this.isInitialized) {
+      this.randomInit(image, width, height);
+      this.isInitialized = true;
+    } else if (this.isInitialized)
+      this.trackFrame(image, width, height);
+    this.frameID++;
   }
 
   randomInit(image: Float32Array, width: number, height: number): void {
     this.map = new DepthMap(width, height, this.debug);
     this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
-    this.currentKeyFrame = new Frame(image, width, height);
+    this.currentKeyFrame = new Frame(image, width, height,this.frameID);
     this.currentKeyFrame.isKF = true;
 
     // Initialize map
@@ -33,7 +47,7 @@ export class LSDVO {
   }
 
   trackFrame(image: Float32Array, width: number, height: number): void {
-    let trackingNewFrame: Frame = new Frame(image, width, height);
+    let trackingNewFrame: Frame = new Frame(image, width, height,this.frameID);
 
     let frameToReference_initialEstimate: SE3 = this.currentKeyFrame.trackedOnPoses.length > 0 ? this.currentKeyFrame.trackedOnPoses
     [this.currentKeyFrame.trackedOnPoses.length - 1] : new SE3();

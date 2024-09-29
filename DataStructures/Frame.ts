@@ -15,7 +15,6 @@ export class Frame {
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
   public IDepthBeenSet: boolean = false;
-  static totalFrames: number = 0;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
   public numFramesTrackedOnThis: number = 0;
@@ -41,10 +40,10 @@ export class Frame {
     }
   }
 
-  public constructor(image: Float32Array, width: number, height: number) {
+  public constructor(image: Float32Array, width: number, height: number,id:number) {
     this._width = width;
     this._height = height;
-    this.id = Frame.totalFrames++;
+    this.id = id;
     this.imageArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientXArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientYArrayLvl = Array(Constants.PYRAMID_LEVELS);
@@ -239,13 +238,13 @@ export class Frame {
     const fyInv: number = Constants.fyInv[level];
     const cxInv: number = Constants.cxInv[level];
     const cyInv: number = Constants.cyInv[level];
-    let posData = Array(width * height);
-    let colorAndVarData = Array(width * height);
+    const posData = Array(width * height);
+    const colorAndVarData = Array(width * height);
     for (let x: number = 1; x < width - 1; x++) {
       for (let y: number = 1; y < height - 1; y++) {
-        let idx: number = x + y * width;
-        let idepth: number = inverseDepth[idx];
-        let vrb: number = inverseDepthVariance[idx];
+        const idx: number = x + y * width;
+        const idepth: number = inverseDepth[idx];
+        const vrb: number = inverseDepthVariance[idx];
         if (idepth === 0 || vrb <= 0) continue;
         posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
         colorAndVarData[idx] = new Float32Array([image[idx], vrb]);

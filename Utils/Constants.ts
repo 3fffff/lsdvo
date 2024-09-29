@@ -111,25 +111,25 @@ export class Constants {
   }
 
   static getPointCloud(keyframe: Frame, level: number): Float32Array[] {
-    let width: number = keyframe.width(level);
-    let height: number = keyframe.height(level);
-    let inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];
-    let inverseDepthVariance: Float32Array = keyframe.inverseDepthVarianceLvl[level];
-    let posData: Float32Array[] = Array(width * height);
-    let fxInv: number = Constants.fxInv[level];
-    let fyInv: number = Constants.fyInv[level];
-    let cxInv: number = Constants.cxInv[level];
-    let cyInv: number = Constants.cyInv[level];
-    let scaledTH: number = Constants.scaledDepthVarTH;
-    let absTH: number = Constants.absDepthVarTH;
+    const width: number = keyframe.width(level);
+    const height: number = keyframe.height(level);
+    const inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];
+    const inverseDepthVariance: Float32Array = keyframe.inverseDepthVarianceLvl[level];
+    const posData: Float32Array[] = Array(width * height);
+    const fxInv: number = Constants.fxInv[level];
+    const fyInv: number = Constants.fyInv[level];
+    const cxInv: number = Constants.cxInv[level];
+    const cyInv: number = Constants.cyInv[level];
+    const scaledTH: number = Constants.scaledDepthVarTH;
+    const absTH: number = Constants.absDepthVarTH;
     for (let x = 1; x < width - 1; x++) {
       for (let y = 1; y < height - 1; y++) {
         // Index to reference pixel
-        let idx: number = x + y * width;
+        const idx: number = x + y * width;
         // Get idepth, variance
-        let idepth: number = inverseDepth[idx];
-        let var1: number = inverseDepthVariance[idx];
-        let depth: number = 1 / idepth;
+        const idepth: number = inverseDepth[idx];
+        const var1: number = inverseDepthVariance[idx];
+        const depth: number = 1 / idepth;
         let depth4: number = depth * depth;
         depth4 *= depth4;
         // Skip if depth/variance is not valid
@@ -150,8 +150,7 @@ export class Constants {
     let cameraPose: Array<SE3> = keyframe.trackedOnPoses;
     let cameraPoints: Float32Array[] = Array();
     for (let i = 0; i < cameraPose.length; i++) {
-      let se3: SE3 = cameraPose[i];
-      let pt = new Float32Array([se3.translation[0], se3.translation[1], se3.translation[2]]);
+      let pt = cameraPose[i].getTranslation();
       pt = keyframe.camToWorld.mul(pt);
       let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2], 255, 0, 0]);
       cameraPoints.push(point);

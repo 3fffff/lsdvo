@@ -1,6 +1,5 @@
 visual odometry
 install
   ```
-  tsc
-  npx webpack
+  npm run build
   ```
