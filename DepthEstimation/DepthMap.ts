@@ -1,7 +1,6 @@
 import { DepthMapPixelHypothesis } from "./DepthMapPixelHypothesis";
 import { Frame } from "../DataStructures/Frame";
 import { Constants } from "../Utils/Constants";
-import { SIM3 } from "../LieAlgebra/SIM3";
 import { Vec } from "../LieAlgebra/Vec";
 import { SE3 } from "../LieAlgebra/SE3";
 import { TestDepth } from "./TestDepth";
@@ -151,7 +150,7 @@ export class DepthMap {
           this.activeKeyFrame.id, frame.id, frame.kfID);
       }
 
-      let refToKf: SIM3;
+      let refToKf: SE3;
       // Get SIM3 from frame to keyframe
       if (this.activeKeyFrame.id === 0) {
         refToKf = frame.thisToParent;
@@ -162,15 +161,14 @@ export class DepthMap {
       // prepare frame for stereo with keyframe, SE3, K, level
       //frame.prepareForStereoWith(refToKf);
 
-      let otherToThis: SIM3 = refToKf.inverse();
+      let otherToThis: SE3 = refToKf.inverse();
 
-      this.K_otherToThis_R = Vec.matrixMul(Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3),
-        otherToThis.getScale());
+      this.K_otherToThis_R = Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3);
       this.otherToThis_t = otherToThis.getTranslation();
       this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
   
       this.thisToOther_t = refToKf.getTranslation();
-      this.thisToOther_R = Vec.matrixMul(refToKf.getRotationMatrix(), refToKf.getScale());
+      this.thisToOther_R = refToKf.getRotationMatrix();
 
       while (this.referenceFrameByID.length + this.referenceFrameByID_offset <= frame.id) {
         this.referenceFrameByID.push(frame);
@@ -1154,7 +1152,7 @@ export class DepthMap {
   public createKeyFrame(new_keyframe: Frame): void {
     console.assert(new_keyframe != null);
 
-    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent.getSE3());
+    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent);
 
     this.propagateDepth(new_keyframe);
 
@@ -1186,7 +1184,7 @@ export class DepthMap {
       this.currentDepthMap[i].idepth_var *= rescaleFactor2;
       this.currentDepthMap[i].idepth_var_smoothed *= rescaleFactor2;
     }
-    this.activeKeyFrame.thisToParent = new SIM3(SE3.inverse(oldToNew_SE3), rescaleFactor);
+    this.activeKeyFrame.thisToParent = SE3.inverse(oldToNew_SE3);
 
     // Update depth in keyframe
     this.activeKeyFrame.setDepth(this.currentDepthMap);
@@ -1208,7 +1206,7 @@ export class DepthMap {
     }
 
     // re-usable values.
-    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent.getSE3());
+    let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent);
     let trafoInv_t: Float32Array = oldToNew_SE3.getTranslation();
     let trafoInv_R: Float32Array = oldToNew_SE3.getRotationMatrix();
 

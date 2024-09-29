@@ -139,7 +139,7 @@ export class Constants {
         posData[idx] =
           new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1.0 / idepth]);
         // Transform
-        posData[idx] = keyframe.camToWorld.mul(posData[idx]);
+        posData[idx] = keyframe.camToWorld.mulFloat(posData[idx]);
         posData[idx] = new Float32Array([posData[idx][0], posData[idx][1], posData[idx][2]]);
       }
     }
@@ -151,7 +151,7 @@ export class Constants {
     let cameraPoints: Float32Array[] = Array();
     for (let i = 0; i < cameraPose.length; i++) {
       let pt = cameraPose[i].getTranslation();
-      pt = keyframe.camToWorld.mul(pt);
+      pt = keyframe.camToWorld.mulFloat(pt);
       let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2], 255, 0, 0]);
       cameraPoints.push(point);
     }

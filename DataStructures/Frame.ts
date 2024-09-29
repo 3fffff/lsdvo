@@ -1,5 +1,4 @@
 import { Constants } from '../Utils/Constants';
-import { SIM3 } from '../LieAlgebra/SIM3';
 import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothesis';
 import { SE3 } from '../LieAlgebra/SE3';
 
@@ -21,8 +20,8 @@ export class Frame {
   public numMappedOnThis: number = 0;
   public meanIdepth: number = 0;
   public numPoints: number = 0;
-  public camToWorld: SIM3 = new SIM3();
-  public thisToParent: SIM3;
+  public camToWorld: SE3 = new SE3();
+  public thisToParent: SE3;
   public kfID: number = 0;
   public trackedOnPoses: SE3[] = [];
 

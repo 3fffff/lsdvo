@@ -41,7 +41,6 @@
         const imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
         const d = getGray(idata.data, idata.width, idata.height)
         console.time("All")
-        console.log(d)
         lsd.track(d, idata.width, idata.height)
         console.timeEnd("All")
       }, i, i)

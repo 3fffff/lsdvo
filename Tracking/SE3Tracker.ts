@@ -2,7 +2,6 @@ import { Constants } from "../Utils/Constants";
 import { Frame } from "../DataStructures/Frame";
 import { SE3 } from "../LieAlgebra/SE3";
 import { Vec } from "../LieAlgebra/Vec";
-import { SIM3 } from "../LieAlgebra/SIM3";
 
 export class SE3Tracker {
   // Settings variables
@@ -178,7 +177,7 @@ export class SE3Tracker {
     let frameToRef: SE3 = SE3.inverse(refToFrame);
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
-    frame.thisToParent = new SIM3(frameToRef, 1.0);
+    frame.thisToParent = frameToRef;
     frame.camToWorld = referenceFrame.camToWorld.mul(frame.thisToParent);
     frame.kfID = referenceFrame.id;
 

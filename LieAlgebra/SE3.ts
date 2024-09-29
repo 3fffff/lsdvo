@@ -148,6 +148,11 @@ export class SE3 {
     return new SE3(new SO3(rotation), translation);
   }
 
+  
+  public mulFloat(point: Float32Array): Float32Array {
+    return Vec.vecAdd2(this.getRotation().matrix, Vec.matVecMultiplySqr(this.getRotationMatrix(), point, 3));
+  }
+
   public assertNotNaN() {
     if (isNaN(this.translation[0])) throw new Error("(isNaN(this.translation[0]));");
     if (isNaN(this.translation[1])) throw new Error("(isNaN(this.translation[1]));");

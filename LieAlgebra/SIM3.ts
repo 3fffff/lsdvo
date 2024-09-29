@@ -49,7 +49,7 @@ export class SIM3 {
     return this.se3.getRotationMatrix();
   }
 
-  public mul$SIM3(sim3: SIM3): SIM3 {
+  public SIM3(sim3: SIM3): SIM3 {
     let newSim3: SIM3 = new SIM3(this);
     newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(sim3.getTranslationMat(), this.getScale()), 3));
     newSim3.se3.rotation.mulEq(sim3.getRotation());
@@ -60,13 +60,13 @@ export class SIM3 {
 
   public mul(sim3?: any): any {
     if (((sim3 != null && sim3 instanceof <any>SIM3) || sim3 === null)) {
-      return <any>this.mul$SIM3(sim3);
+      return this.SIM3(sim3);
     } else if (sim3 != null && sim3 instanceof Float32Array) {
-      return <any>this.mul$double_A(sim3);
+      return this.mulFloat(sim3);
     } else throw new Error('invalid overload');
   }
 
-  public mul$double_A(point: Float32Array): Float32Array {
+  public mulFloat(point: Float32Array): Float32Array {
     return Vec.vecAdd2(this.getTranslationMat(), Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(point, this.getScale()), 3));
   }
 

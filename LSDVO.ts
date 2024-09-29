@@ -19,7 +19,6 @@ export class LSDVO {
   constructor(K: Float32Array, mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
-    console.log(K)
     Constants.setK(K[0], K[1], K[2], K[3]);
   }
 
@@ -37,7 +36,7 @@ export class LSDVO {
     this.map = new DepthMap(width, height, this.debug);
     this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
-    this.currentKeyFrame = new Frame(image, width, height,this.frameID);
+    this.currentKeyFrame = new Frame(image, width, height, this.frameID);
     this.currentKeyFrame.isKF = true;
 
     // Initialize map
@@ -47,7 +46,7 @@ export class LSDVO {
   }
 
   trackFrame(image: Float32Array, width: number, height: number): void {
-    let trackingNewFrame: Frame = new Frame(image, width, height,this.frameID);
+    let trackingNewFrame: Frame = new Frame(image, width, height, this.frameID);
 
     let frameToReference_initialEstimate: SE3 = this.currentKeyFrame.trackedOnPoses.length > 0 ? this.currentKeyFrame.trackedOnPoses
     [this.currentKeyFrame.trackedOnPoses.length - 1] : new SE3();
