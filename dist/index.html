@@ -11,10 +11,10 @@
 <script>
   const cnv = document.getElementById('canvas')
   const ctx = document.getElementById('canvas').getContext('2d');
-  const lsd = new LSD.LSDVO(new Float32Array([685.720, 685.636, 630.858, 511.918]),true, true)
+  const lsd = new LSD.LSDVO(new Float32Array([685.720, 685.636, 630.858, 511.918]), true, true)
 
   function handleFileSelect(e) {
-    const files = e.target.files;
+    const files = [...e.target.files].sort((a, b) => b - a);
     loadImg(...files)
       .then((img) => timeout(img))
       .catch(err => console.error(err));

@@ -29,7 +29,6 @@ export class DepthMap {
   validityIntegralBuffer: Float32Array;
 
   activeKeyFrame: Frame;
-  activeKeyFrameIsReactivated: boolean;
 
   oldest_referenceFrame: Frame;
   newest_referenceFrame: Frame;
@@ -84,7 +83,6 @@ export class DepthMap {
 
   public initializeRandomly(newFrame: Frame): void {
     this.activeKeyFrame = newFrame;
-    this.activeKeyFrameIsReactivated = false;
 
     let maxGradients: Float32Array = newFrame.imageGradientMaxArrayLvl[0];
 
@@ -100,7 +98,7 @@ export class DepthMap {
           let idepth: number = 0.5 + 1.0 * (Math.random() * (100001) / 100000.0);
 
           // Set fixed initial depth
-          // float idepth = 0.5f + 1.0f * 0.5f;
+          // let idepth = 0.5f + 1.0f * 0.5f;
 
           // Set hypothesis, random idepth and initial variance.
           this.currentDepthMap[x + y * this.width] = new DepthMapPixelHypothesis(idepth, idepth,
@@ -246,18 +244,7 @@ export class DepthMap {
     // ???
     // What is activeKeyFrameIsReactivated?
     // Key frame was used before?
-    let refFrame: Frame = this.activeKeyFrameIsReactivated ? this.newest_referenceFrame : this.oldest_referenceFrame;
-
-    // Frame tracked against activeKeyFrame?
-    /*if (refFrame.kfID == this.activeKeyFrame.id) {
-      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
-
-      // Check if pixel is good during tracking?
-      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
-        return false;
-      }
-    }*/
+    let refFrame: Frame = this.newest_referenceFrame;
 
     // Get epipolar line??
     let epx: number, epy: number;
@@ -303,31 +290,7 @@ export class DepthMap {
 
   observeDepthUpdate(x: number, y: number, idx: number, keyFrameMaxGradBuf: Float32Array): boolean {
     let target: DepthMapPixelHypothesis = this.currentDepthMap[idx];
-    let refFrame: Frame;
-
-    // Keyframe was not used before?
-    if (!this.activeKeyFrameIsReactivated) {
-      if (Math.floor(target.nextStereoFrameMinID - this.referenceFrameByID_offset) >= this.referenceFrameByID.length) {
-        return false;
-      }
-      // Set refFrame to oldest_referenceFrame or some other frame?
-      if (target.nextStereoFrameMinID - this.referenceFrameByID_offset < 0) {
-        refFrame = this.oldest_referenceFrame;
-      } else {
-        refFrame = this.referenceFrameByID[Math.floor(target.nextStereoFrameMinID - this.referenceFrameByID_offset)];
-      }
-    } else {
-      refFrame = this.newest_referenceFrame;
-    }
-
-    /*if (refFrame.kfID == this.activeKeyFrame.id) {
-      let wasGoodDuringTracking: boolean[] | null = refFrame._refPixelWasGood;
-
-      if (wasGoodDuringTracking != null && !wasGoodDuringTracking[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-        + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]) {
-        return false;
-      }
-    }*/
+    let refFrame: Frame = this.newest_referenceFrame;
 
     // Get epipolar line
     let epx: number, epy: number;
@@ -446,7 +409,7 @@ export class DepthMap {
 
   /**
  *
- * Return null if failed, return float[] {epx, epy} if found.
+ * Return null if failed, return let[] {epx, epy} if found.
  */
   makeAndCheckEPL(x: number, y: number, ref: Frame): Float32Array | null {
     let idx: number = x + y * this.width;
@@ -506,7 +469,7 @@ export class DepthMap {
   // returns error if sucessful; -1 if out of bounds, -2 if not found.
 
   /**
-   * Returns float[4] array, {error, result_idepth, result_var, result_eplLength}
+   * Returns let[4] array, {error, result_idepth, result_var, result_eplLength}
    */
   doLineStereo(u: number, v: number, epxn: number, epyn: number, min_idepth: number, prior_idepth: number,
     max_idepth: number, referenceFrame: Frame, referenceFrameImage: Float32Array, result_idepth: number, result_var: number,
@@ -1157,7 +1120,6 @@ export class DepthMap {
     this.propagateDepth(new_keyframe);
 
     this.activeKeyFrame = new_keyframe;
-    this.activeKeyFrameIsReactivated = false;
 
     this.regularizeDepthMap(true, Constants.VAL_SUM_MIN_FOR_KEEP);
 
@@ -1242,13 +1204,6 @@ export class DepthMap {
         let newIDX: number = Math.floor(u_new + 0.5) + (Math.floor(v_new + 0.5)) * this.width;
         let destAbsGrad: number = newKFMaxGrad[newIDX];
 
-        /* if (trackingWasGood != null) {
-           if (!trackingWasGood[(x >> Constants.SE3TRACKING_MIN_LEVEL)
-             + (this.width >> Constants.SE3TRACKING_MIN_LEVEL) * (y >> Constants.SE3TRACKING_MIN_LEVEL)]
-             || destAbsGrad < Constants.MIN_ABS_GRAD_DECREASE) {
-             continue;
-           }
-         } else {*/
         let sourceColor: number = activeKFImageData[x + y * this.width];
         let destColor: number = Vec.interpolatedValue(newKFImageData, u_new, v_new, this.width);
 

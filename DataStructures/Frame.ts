@@ -52,24 +52,24 @@ export class Frame {
     this.imageArrayLvl[0] = image;
     this.imageGradientXArrayLvl[0] = this.gradientX(this.imageArrayLvl[0], 0);
     this.imageGradientYArrayLvl[0] = this.gradientY(this.imageArrayLvl[0], 0);
-    this.imageGradientMaxArrayLvl[0] = this.gradientMax(0);
+    this.imageGradientMaxArrayLvl[0] = this.gradientMax(this.imageGradientXArrayLvl,this.imageGradientYArrayLvl,0);
     for (let i: number = 1; i < Constants.PYRAMID_LEVELS; i++) {
       this.imageArrayLvl[i] = new Float32Array((this.imageArrayLvl[i - 1].length / 4 | 0));
       this.buildImageLevel(this.imageArrayLvl[i - 1], this.imageArrayLvl[i], i);
       this.imageGradientXArrayLvl[i] = this.gradientX(this.imageArrayLvl[i], i);
       this.imageGradientYArrayLvl[i] = this.gradientY(this.imageArrayLvl[i], i);
-      this.imageGradientMaxArrayLvl[i] = this.gradientMax(i);
+      this.imageGradientMaxArrayLvl[i] = this.gradientMax(this.imageGradientXArrayLvl,this.imageGradientYArrayLvl,i);
     }
   }
 
-  gradientMax(level: number): Float32Array {
+  gradientMax(imageGradientXArrayLvl:Array<Float32Array>,imageGradientYArrayLvl:Array<Float32Array>,level: number): Float32Array {
     let w: number = this.width(level);
     let h: number = this.height(level);
     let gradientMax: Float32Array = new Float32Array(w * h);
     let gradientMaxTemp: Float32Array = new Float32Array(w * h);
     for (let i: number = w; i < w * (h - 1); i++) {
-      let dx: number = this.imageGradientXArrayLvl[level][i];
-      let dy: number = this.imageGradientYArrayLvl[level][i];
+      let dx: number = imageGradientXArrayLvl[level][i];
+      let dy: number = imageGradientYArrayLvl[level][i];
       gradientMax[i] = Math.sqrt(dx * dx + dy * dy);
     }
     for (let i: number = w + 1; i < w * (h - 1) - 1; i++) {
