@@ -178,7 +178,7 @@ export class SE3Tracker {
 
     frame.initialTrackedResidual = lastResidual / this.pointUsage;
     frame.thisToParent = frameToRef;
-    frame.camToWorld = referenceFrame.camToWorld.mul(frame.thisToParent);
+    frame.camToWorld = referenceFrame.camToWorld.mulSE3(frame.thisToParent);
     frame.kfID = referenceFrame.id;
 
     // Add frameToRef to reference frame

@@ -119,7 +119,7 @@ export class SIM3 {
     let cross: Float32Array = Vec.cross(rotVec, transVec);
     let trans: Float32Array = Vec.vecAdd2(Vec.vecAdd2(Vec.scalarMult2(transVec, coeff[0]), Vec.scalarMult2(cross, coeff[1])), Vec.scalarMult2(Vec.cross(rotVec, cross), coeff[2]));
     let se3: SE3 = new SE3();
-    se3.setTranslation1(trans);
+    se3.setTranslation(trans);
     se3.rotation = rotation;
     let result: SIM3 = new SIM3(se3, scale);
     result.assertNotNaN();

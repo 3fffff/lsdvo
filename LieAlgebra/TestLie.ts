@@ -11,7 +11,7 @@ export class TestLie {
     se3 = SE3.exp(vec6);
 
     // Inverse test
-    console.log("vec = " + SE3.ln(se3.mul(se3.inverse())));
+    console.log("vec = " + SE3.ln(se3.mulSE3(se3.inverse())));
 
     console.log("vec = " + SE3.ln(se3));
     for (let i = 0; i < 100; i++) {

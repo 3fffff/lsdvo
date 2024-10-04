@@ -39,7 +39,7 @@ export class Frame {
     }
   }
 
-  public constructor(image: Float32Array, width: number, height: number,id:number) {
+  public constructor(image: Float32Array, width: number, height: number, id: number) {
     this._width = width;
     this._height = height;
     this.id = id;
@@ -50,26 +50,25 @@ export class Frame {
     this.inverseDepthLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthVarianceLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageArrayLvl[0] = image;
-    this.imageGradientXArrayLvl[0] = this.gradientX(this.imageArrayLvl[0], 0);
-    this.imageGradientYArrayLvl[0] = this.gradientY(this.imageArrayLvl[0], 0);
-    this.imageGradientMaxArrayLvl[0] = this.gradientMax(this.imageGradientXArrayLvl,this.imageGradientYArrayLvl,0);
+    this.imageGradientXArrayLvl[0] = this.gradientX(this.imageArrayLvl[0], width, height);
+    this.imageGradientYArrayLvl[0] = this.gradientY(this.imageArrayLvl[0], width, height);
+    this.imageGradientMaxArrayLvl[0] = this.gradientMax(this.imageGradientXArrayLvl[0], this.imageGradientYArrayLvl[0], 0, width, height);
     for (let i: number = 1; i < Constants.PYRAMID_LEVELS; i++) {
-      this.imageArrayLvl[i] = new Float32Array((this.imageArrayLvl[i - 1].length / 4 | 0));
-      this.buildImageLevel(this.imageArrayLvl[i - 1], this.imageArrayLvl[i], i);
-      this.imageGradientXArrayLvl[i] = this.gradientX(this.imageArrayLvl[i], i);
-      this.imageGradientYArrayLvl[i] = this.gradientY(this.imageArrayLvl[i], i);
-      this.imageGradientMaxArrayLvl[i] = this.gradientMax(this.imageGradientXArrayLvl,this.imageGradientYArrayLvl,i);
+      const w = this.width(i)
+      const h = this.height(i)
+      this.imageArrayLvl[i] = this.buildImageLevel(this.imageArrayLvl[i - 1], this.width(i - 1), this.height(i - 1));
+      this.imageGradientXArrayLvl[i] = this.gradientX(this.imageArrayLvl[i], w, h);
+      this.imageGradientYArrayLvl[i] = this.gradientY(this.imageArrayLvl[i], w, h);
+      this.imageGradientMaxArrayLvl[i] = this.gradientMax(this.imageGradientXArrayLvl[i], this.imageGradientYArrayLvl[i], i, w, h);
     }
   }
 
-  gradientMax(imageGradientXArrayLvl:Array<Float32Array>,imageGradientYArrayLvl:Array<Float32Array>,level: number): Float32Array {
-    let w: number = this.width(level);
-    let h: number = this.height(level);
+  gradientMax(imageGradientXArrayLvl: Float32Array, imageGradientYArrayLvl: Float32Array, level: number, w: number, h: number): Float32Array {
     let gradientMax: Float32Array = new Float32Array(w * h);
     let gradientMaxTemp: Float32Array = new Float32Array(w * h);
     for (let i: number = w; i < w * (h - 1); i++) {
-      let dx: number = imageGradientXArrayLvl[level][i];
-      let dy: number = imageGradientYArrayLvl[level][i];
+      let dx: number = imageGradientXArrayLvl[i];
+      let dy: number = imageGradientYArrayLvl[i];
       gradientMax[i] = Math.sqrt(dx * dx + dy * dy);
     }
     for (let i: number = w + 1; i < w * (h - 1) - 1; i++) {
@@ -97,19 +96,15 @@ export class Frame {
     return gradientMax;
   }
 
-  gradientX(imageArrayLvl: Float32Array, level: number): Float32Array {
+  gradientX(imageArrayLvl: Float32Array, w: number, h: number): Float32Array {
     const imageGradientXArray: Float32Array = new Float32Array(imageArrayLvl.length);
-    const w: number = this.width(level);
-    const h: number = this.height(level);
     for (let i: number = w; i <= w * (h - 1); i++)
       imageGradientXArray[i] = 0.5 * (imageArrayLvl[i + 1] - imageArrayLvl[i - 1]);
     return imageGradientXArray;
   }
 
-  gradientY(imageArrayLvl: Float32Array, level: number): Float32Array {
+  gradientY(imageArrayLvl: Float32Array, w: number, h: number): Float32Array {
     const imageGradientYArray: Float32Array = new Float32Array(imageArrayLvl.length);
-    const w: number = this.width(level);
-    const h: number = this.height(level);
     for (let i: number = w; i < w * (h - 1); i++)
       imageGradientYArray[i] = 0.5 * (imageArrayLvl[i + w] - imageArrayLvl[i - w]);
     return imageGradientYArray;
@@ -215,13 +210,13 @@ export class Frame {
     }
   }
 
-  buildImageLevel(imageArraySrc: Float32Array, imageArrayDst: Float32Array, level: number) {
-    const width: number = this.width(level - 1);
-    const height: number = this.height(level - 1);
+  buildImageLevel(imageArraySrc: Float32Array, width: number, height: number): Float32Array {
+    const imageArrayDst: Float32Array = new Float32Array((width * height) / 4)
     let dstIdx: number = 0;
     for (let y: number = 0; y < width * height; y += width * 2)
       for (let x: number = 0; x < width; x += 2)
         imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
+    return imageArrayDst
   }
 
   /**

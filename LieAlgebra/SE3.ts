@@ -19,7 +19,7 @@ export class SE3 {
       this.assertNotNaN();
     } else{
       this.rotation = new SO3();
-      this.setTranslation3(0, 0, 0);
+      this.setTranslation(new Float32Array([0, 0, 0]));
       this.assertNotNaN();
     }
   }
@@ -57,7 +57,7 @@ export class SE3 {
     if (theta_sq < 1.0E-12) {
       A = 1.0 - one_6th * theta_sq;
       B = 0.5;
-      result.setTranslation1(Vec.vecAdd2(t, Vec.scalarMult2(cross, 0.5)));
+      result.setTranslation(Vec.vecAdd2(t, Vec.scalarMult2(cross, 0.5)));
     } else {
       let C: number;
       if (theta_sq < 1.0E-12) {
@@ -70,7 +70,7 @@ export class SE3 {
         B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
         C = (1.0 - A) * (inv_theta * inv_theta);
       }
-      result.setTranslation1(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMult2(cross, B)), Vec.scalarMult2(Vec.cross(w, cross), C)));
+      result.setTranslation(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMult2(cross, B)), Vec.scalarMult2(Vec.cross(w, cross), C)));
     }
     result.rotation.matrix = SO3.rodrigues_so3_exp(w, A, B);
     return result;
@@ -109,24 +109,10 @@ export class SE3 {
     return SE3.inverse(this);
   }
 
-  public setTranslation1(vec3: Float32Array) {
+  public setTranslation(vec3: Float32Array) {
     let translationVec3: Float32Array = new Float32Array([vec3[0], vec3[1], vec3[2]]);
     this.translation = translationVec3;
   }
-
-  public setTranslation3(x: number, y: number, z: number) {
-    let translationVec3: Float32Array = new Float32Array([x, y, z]);
-    this.translation = translationVec3;
-  }
-
-  public setTranslation(x?: any, y?: any, z?: any): any {
-    if (((typeof x === 'number') || x === null) && ((typeof y === 'number') || y === null) && ((typeof z === 'number') || z === null)) {
-      return this.setTranslation3(x, y, z);
-    } else if (((x != null && x instanceof <any>Array && (x.length == 0 || x[0] == null || (typeof x[0] === 'number'))) || x === null) && y === undefined && z === undefined) {
-      return this.setTranslation1(x);
-    } else throw new Error('invalid overload');
-  }
-
   /**
    * Right multiply by given SE3
    * @param {SE3} se3
@@ -142,7 +128,7 @@ export class SE3 {
    * @param {SE3} se3
    * @return {SE3}
    */
-  public mul(se3: SE3): SE3 {
+  public mulSE3(se3: SE3): SE3 {
     let translation: Float32Array = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
     let rotation: Float32Array = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     return new SE3(new SO3(rotation), translation);
@@ -150,7 +136,7 @@ export class SE3 {
 
   
   public mulFloat(point: Float32Array): Float32Array {
-    return Vec.vecAdd2(this.getRotation().matrix, Vec.matVecMultiplySqr(this.getRotationMatrix(), point, 3));
+    return Vec.vecAdd2(this.getTranslation(), Vec.matVecMultiplySqr(this.getRotationMatrix(), point, 3));
   }
 
   public assertNotNaN() {

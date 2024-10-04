@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -14,7 +15,7 @@
   const lsd = new LSD.LSDVO(new Float32Array([685.720, 685.636, 630.858, 511.918]), true, true)
 
   function handleFileSelect(e) {
-    const files = [...e.target.files].sort((a, b) => b - a);
+    const files = e.target.files
     loadImg(...files)
       .then((img) => timeout(img))
       .catch(err => console.error(err));
@@ -34,16 +35,16 @@
   function timeout(img) {
     for (let i = 0; i < img.length; i++) {
       setTimeout(function () {
-        cnv.height = img[i].height
-        cnv.width = img[i].width
-        ctx.drawImage(img[i], 0, 0, img[i].width, img[i].height);
-        const idata = ctx.getImageData(0, 0, img[i].width, img[i].height)
+        cnv.height = img[i].height / 2
+        cnv.width = img[i].width / 2
+        ctx.drawImage(img[i], 0, 0, img[i].width / 2, img[i].height / 2);
+        const idata = ctx.getImageData(0, 0, img[i].width / 2, img[i].height / 2)
         const imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
         const d = getGray(idata.data, idata.width, idata.height)
         console.time("All")
         lsd.track(d, idata.width, idata.height)
         console.timeEnd("All")
-      }, i, i)
+      }, 0, i)
     }
   }
 

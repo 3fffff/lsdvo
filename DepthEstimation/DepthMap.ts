@@ -30,10 +30,10 @@ export class DepthMap {
 
   activeKeyFrame: Frame;
 
-  oldest_referenceFrame: Frame;
-  newest_referenceFrame: Frame;
-  referenceFrameByID: Array<Frame>;
-  referenceFrameByID_offset: number;
+  //oldest_referenceFrame: Frame;
+  referenceFrame: Frame;
+  //referenceFrameByID: Array<Frame>;
+  //referenceFrameByID_offset: number;
 
   // Camera matrix
   fx: number; fy: number; cx: number; cy: number;
@@ -45,7 +45,7 @@ export class DepthMap {
   thisToOther_t: Float32Array;
   debugDepth: TestDepth | null;
 
-  constructor(w: number, h: number,debug:boolean) {
+  constructor(w: number, h: number, debug: boolean) {
     this.width = w;
     this.height = h;
 
@@ -119,59 +119,48 @@ export class DepthMap {
   /**
  * Updates depth map with observations from deque of frames
  */
-  public updateKeyframe(referenceFrames: Frame[]) {
+  public updateKeyframe(frame: Frame) {
     this.isValid()
 
     // Get oldest/newest frames
-    this.oldest_referenceFrame = referenceFrames[referenceFrames.length - 1];
-    this.newest_referenceFrame = referenceFrames[0];
+    //  this.oldest_referenceFrame = referenceFrames[referenceFrames.length - 1];
+    this.referenceFrame = frame
 
-    this.referenceFrameByID = [];
-    this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
+   // this.referenceFrameByID = [];
+   // this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
 
     // For each frame
-    for (let frame of referenceFrames) {
-      // console.log("Updating keyframe " + activeKeyFrame.id + " with " +
-      // frame.id + ".");
+    // console.log("Updating keyframe " + activeKeyFrame.id + " with " +
+    // frame.id + ".");
 
-      // Do not update keyframe with own frame.
-      if (frame.id == this.activeKeyFrame.id) {
-        continue;
-      }
-
-      // Checks that tracking parent is valid
-      //		assert (frame.id != 0);
-      if (frame.kfID != this.activeKeyFrame.id) {
-        console.log(
-          "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
-          + "\nWhile this should work, it is not recommended.",
-          this.activeKeyFrame.id, frame.id, frame.kfID);
-      }
-
-      let refToKf: SE3;
-      // Get SIM3 from frame to keyframe
-      if (this.activeKeyFrame.id === 0) {
-        refToKf = frame.thisToParent;
-      } else {
-        refToKf = this.activeKeyFrame.camToWorld.inverse().mul(frame.camToWorld);
-      }
-
-      // prepare frame for stereo with keyframe, SE3, K, level
-      //frame.prepareForStereoWith(refToKf);
-
-      let otherToThis: SE3 = refToKf.inverse();
-
-      this.K_otherToThis_R = Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3);
-      this.otherToThis_t = otherToThis.getTranslation();
-      this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
-  
-      this.thisToOther_t = refToKf.getTranslation();
-      this.thisToOther_R = refToKf.getRotationMatrix();
-
-      while (this.referenceFrameByID.length + this.referenceFrameByID_offset <= frame.id) {
-        this.referenceFrameByID.push(frame);
-      }
+    // Checks that tracking parent is valid
+    //		assert (frame.id != 0);
+    if (frame.kfID != this.activeKeyFrame.id) {
+      console.log(
+        "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
+        + "\nWhile this should work, it is not recommended.",
+        this.activeKeyFrame.id, frame.id, frame.kfID);
     }
+
+    let refToKf: SE3;
+    // Get SIM3 from frame to keyframe
+    if (this.activeKeyFrame.id === 0) {
+      refToKf = frame.thisToParent;
+    } else {
+      refToKf = this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
+    }
+
+    // prepare frame for stereo with keyframe, SE3, K, level
+    //frame.prepareForStereoWith(refToKf);
+
+    let otherToThis: SE3 = refToKf.inverse();
+
+    this.K_otherToThis_R = Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3);
+    this.otherToThis_t = otherToThis.getTranslation();
+    this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
+
+    this.thisToOther_t = refToKf.getTranslation();
+    this.thisToOther_R = refToKf.getRotationMatrix();
 
     // *** OBSERVE DEPTH HERE
     this.observeDepth();
@@ -203,7 +192,6 @@ export class DepthMap {
    * @param yMax
    */
   observeDepthRow(yMin: number, yMax: number): void {
-    this.debugDepth?.stereoDebug();
     let keyFrameMaxGradBuf: Float32Array = this.activeKeyFrame.imageGradientMaxArrayLvl[0];
 
     // For each row assigned
@@ -244,7 +232,7 @@ export class DepthMap {
     // ???
     // What is activeKeyFrameIsReactivated?
     // Key frame was used before?
-    let refFrame: Frame = this.newest_referenceFrame;
+    let refFrame: Frame = this.referenceFrame;
 
     // Get epipolar line??
     let epx: number, epy: number;
@@ -290,7 +278,7 @@ export class DepthMap {
 
   observeDepthUpdate(x: number, y: number, idx: number, keyFrameMaxGradBuf: Float32Array): boolean {
     let target: DepthMapPixelHypothesis = this.currentDepthMap[idx];
-    let refFrame: Frame = this.newest_referenceFrame;
+    let refFrame: Frame = this.referenceFrame;
 
     // Get epipolar line
     let epx: number, epy: number;
@@ -342,7 +330,7 @@ export class DepthMap {
       if (target.validity_counter < 0)
         target.validity_counter = 0;
 
-      target.nextStereoFrameMinID = 0;
+      //target.nextStereoFrameMinID = 0;
 
       target.idepth_var *= DepthMap.FAIL_VAR_INC_FAC;
       if (target.idepth_var > Constants.MAX_VAR) {
@@ -400,7 +388,7 @@ export class DepthMap {
         if (result_eplLength < 0.5 * Constants.MIN_EPL_LENGTH_CROP)
           inc *= 3;
 
-        target.nextStereoFrameMinID = refFrame.id + inc;
+        //target.nextStereoFrameMinID = refFrame.id + inc;
       }
 
       return true;
@@ -919,6 +907,8 @@ export class DepthMap {
     result_idepth = idnew_best_match;
 
     result_eplLength = eplLength;
+
+    this.debugDepth?.debugImageStereoLines(pClose[0],pClose[1],pFar[0],pFar[1])
 
     return new Float32Array([best_match_err, result_idepth, result_var, result_eplLength]);
   }
