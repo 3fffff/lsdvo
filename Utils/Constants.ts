@@ -152,7 +152,7 @@ export class Constants {
     for (let i = 0; i < cameraPose.length; i++) {
       let pt = cameraPose[i].getTranslation();
       pt = keyframe.camToWorld.mulFloat(pt);
-      let point: Float32Array = new Float32Array([pt[0], pt[1], pt[2], 255, 0, 0]);
+      let point: Float32Array = new Float32Array([...pt, 255, 0, 0]);
       cameraPoints.push(point);
     }
     return cameraPoints;

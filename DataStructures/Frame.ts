@@ -49,14 +49,10 @@ export class Frame {
     this.imageGradientMaxArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthVarianceLvl = Array(Constants.PYRAMID_LEVELS);
-    this.imageArrayLvl[0] = image;
-    this.imageGradientXArrayLvl[0] = this.gradientX(this.imageArrayLvl[0], width, height);
-    this.imageGradientYArrayLvl[0] = this.gradientY(this.imageArrayLvl[0], width, height);
-    this.imageGradientMaxArrayLvl[0] = this.gradientMax(this.imageGradientXArrayLvl[0], this.imageGradientYArrayLvl[0], 0, width, height);
-    for (let i: number = 1; i < Constants.PYRAMID_LEVELS; i++) {
+    for (let i: number = 0; i < Constants.PYRAMID_LEVELS; i++) {
       const w = this.width(i)
       const h = this.height(i)
-      this.imageArrayLvl[i] = this.buildImageLevel(this.imageArrayLvl[i - 1], this.width(i - 1), this.height(i - 1));
+      i == 0 ? this.imageArrayLvl[0] = image : this.imageArrayLvl[i] = this.buildImageLevel(this.imageArrayLvl[i - 1], this.width(i - 1), this.height(i - 1));
       this.imageGradientXArrayLvl[i] = this.gradientX(this.imageArrayLvl[i], w, h);
       this.imageGradientYArrayLvl[i] = this.gradientY(this.imageArrayLvl[i], w, h);
       this.imageGradientMaxArrayLvl[i] = this.gradientMax(this.imageGradientXArrayLvl[i], this.imageGradientYArrayLvl[i], i, w, h);

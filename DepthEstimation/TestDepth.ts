@@ -69,7 +69,6 @@ export class TestDepth {
     this.imgStereoLinesCtx.beginPath();
     this.imgStereoLinesCtx.moveTo(lineFromX, lineFromY);
     this.imgStereoLinesCtx.lineTo(lineToX, lineToY);
-
     this.imgStereoLinesCtx.stroke();
   }
 }
