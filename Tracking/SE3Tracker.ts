@@ -76,9 +76,6 @@ export class SE3Tracker {
 
     console.log("Init refToFrame: " + (SE3.ln(refToFrame)));
 
-    // LS
-    let ls: LGS6 = new LGS6();
-
     let lastResidual: number = 0;
 
     // For each pyramid level, coarse to fine
@@ -103,14 +100,14 @@ export class SE3Tracker {
       // For a maximum number of iterations
       for (let iteration = 0; iteration < this.maxItsPerLvl[level]; iteration++) {
         // Calculate/update LS
-        this.calculateWarpUpdate(ls);
+        let [A, b] = this.calculateWarpUpdate();
 
         let incTry: number = 0;
         while (true) {
           incTry++;
 
           // Solve LS to get increment
-          let inc: Float32Array = this.calcIncrement(ls, LM_lambda);
+          let inc: Float32Array = this.calcIncrement(A, b, LM_lambda);
           // console.log(incTry + " : " + LM_lambda + inc);
           // Apply increment
           let newRefToFrame: SE3 = SE3.exp(inc);
@@ -189,9 +186,7 @@ export class SE3Tracker {
     return frameToRef;
   }
 
-  calcIncrement(ls: LGS6, LM_lambda: number): Float32Array {
-    let b: Float32Array = Vec.vecNeg(ls.b);
-    let A: Float32Array = ls.A;
+  calcIncrement(A: Float32Array, b: Float32Array, LM_lambda: number): Float32Array {
     for (let i = 0; i < b.length; i++)
       A[i * b.length + i] = A[i * b.length + i] * (1 + LM_lambda); // A(i,i) *= 1+LM_lambda;
     return Vec.solveSystem(A, b);
@@ -337,11 +332,10 @@ export class SE3Tracker {
     return sumRes / this.warpedCount;
   }
 
-  /**
-   * calculateWarpUpdate
-   */
-  calculateWarpUpdate(ls: LGS6): void {
-    ls.initialize();
+  calculateWarpUpdate(): [Float32Array, Float32Array] {
+    const A = new Float32Array(36);
+    const b = new Float32Array(6)
+    //let error = 0;
     // For each warped pixel
     for (let i = 0; i < this.warpedCount; i++) {
       // x,y,z
@@ -364,38 +358,15 @@ export class SE3Tracker {
       (1.0 + px * px * z_sqr) * gx + (px * py * z_sqr) * gy, (-py * z) * gx + (px * z) * gy]);
 
       // Integrate into A and b
-      ls.update(v, r, this.bufWeightP[i]);
+      Vec.matrixAdd(A, Vec.matrixMul(Vec.vecTransMul(v, v), this.bufWeightP[i]));
+      Vec.vecMinus(b, (Vec.scalarMul2(v, r * this.bufWeightP[i])));
+     // error += r * r * this.bufWeightP[i];
     }
     // Solve LS
-    ls.finish();
-  }
-}
-
-class LGS6 {
-  // 6x6 matrix
-  A: Float32Array;
-  // 6x1 vector
-  b: Float32Array;
-  error: number = 0;
-  numConstraints: number = 0;
-  initialize() {
-    this.A = new Float32Array(36);
-    this.b = new Float32Array(6);
-    this.error = 0;
-    this.numConstraints = 0
-  }
-
-  // J is a vec6
-  update(J: Float32Array, res: number, weight: number): void {
-    this.A = Vec.matrixAdd(this.A, Vec.matrixMul(Vec.vecT(J, J), weight));
-    this.b = Vec.vecMinus2(this.b, (Vec.scalarMult2(J, res * weight)));
-    this.error += res * res * weight;
-    this.numConstraints += 1;
-  }
-
-  finish(): void {
-    this.A = Vec.matrixDiv(this.A, this.numConstraints);
-    this.b = Vec.scalarDel(this.b, this.numConstraints);
-    this.error /= this.numConstraints;
+    Vec.matrixDiv(A, this.warpedCount);
+    Vec.vectorDiv0(b, this.warpedCount)
+    Vec.vecNeg(b);
+   // error /= this.warpedCount;
+    return [A, b]
   }
 }

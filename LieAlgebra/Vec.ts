@@ -81,7 +81,7 @@ export class Vec {
     for (let i: number = 0; i < vec0.length; i++)  vec0[i] *= s;
   }
 
-  public static scalarMult2(vec0: Float32Array, s: number): Float32Array {
+  public static scalarMul2(vec0: Float32Array, s: number): Float32Array {
     let result: Float32Array = new Float32Array(vec0.length);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] * s;
     return result;
@@ -153,19 +153,23 @@ export class Vec {
     return result;
   }
 
-  public static matrixAdd(A: Float32Array, B: Float32Array): Float32Array {
+  public static matrixAdd(A: Float32Array, B: Float32Array): void {
+    for (let i: number = 0; i < A.length; i++)  A[i] = A[i] + B[i];
+  }
+  public static matrixAdd2(A: Float32Array, B: Float32Array): Float32Array {
     let result: Float32Array = new Float32Array(A.length);
     for (let i: number = 0; i < A.length; i++)  result[i] = A[i] + B[i];
     return result;
   }
 
-  public static matrixDiv(A: Float32Array, s: number): Float32Array {
-    let result: Float32Array = new Float32Array(A.length);
-    for (let i: number = 0; i < A.length; i++)  result[i] = A[i] / s;
-    return result;
+  public static matrixDiv(A: Float32Array, s: number): void {
+    for (let i: number = 0; i < A.length; i++)  A[i] = A[i] / s;
+  }
+  public static vectorDiv0(vec0: Float32Array, s: number): void {
+    for (let i: number = 0; i < vec0.length; i++)  vec0[i] = vec0[i] / s;
   }
 
-  public static scalarDel(vec0: Float32Array, s: number): Float32Array {
+  public static vectorDiv(vec0: Float32Array, s: number): Float32Array {
     let result: Float32Array = new Float32Array(vec0.length);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] / s;
     return result;
@@ -181,7 +185,7 @@ export class Vec {
     return result;
   }
 
-  public static vecT(a: Float32Array, b: Float32Array): Float32Array {
+  public static vecTransMul(a: Float32Array, b: Float32Array): Float32Array {
     let result: Float32Array = new Float32Array(a.length * b.length);
     for (let i: number = 0; i < a.length; i++)
       for (let j: number = 0; j < b.length; j++)
@@ -189,10 +193,8 @@ export class Vec {
     return result;
   }
 
-  public static vecNeg(a: Float32Array): Float32Array {
-    let result: Float32Array = new Float32Array(a.length);
-    for (let i: number = 0; i < a.length; i++) { result[i] = a[i] * (-1); }
-    return result;
+  public static vecNeg(a: Float32Array): void {
+    for (let i: number = 0; i < a.length; i++) a[i] = a[i] * (-1); 
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {

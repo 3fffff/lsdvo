@@ -41,7 +41,7 @@ export class LSDVO {
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame, this.currentKeyFrame);
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
     console.log("Done random initialization.");
   }
 
@@ -59,7 +59,7 @@ export class LSDVO {
     console.log("lastBadCount " + this.tracker.lastBadCount);
     const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
     console.log("dens:" + this.currentKeyFrame.numPoints + ";good:" + lastGoodperBed + ";usg:" + this.tracker.pointUsage)
-    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame, trackingNewFrame);
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
       console.log("trackingWasGood: " + this.tracker.trackingWasGood)
       console.log("diverged: " + this.tracker.diverged);

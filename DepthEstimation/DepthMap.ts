@@ -466,7 +466,7 @@ export class DepthMap {
     // calculate epipolar line start and end point in old image
     let KinvP: Float32Array = new Float32Array([this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0]);
     let pInf: Float32Array = Vec.matVecMultiplySqr(this.K_otherToThis_R, KinvP, 3);
-    let pReal: Float32Array = Vec.vecAdd2(Vec.scalarDel(pInf, prior_idepth), this.K_otherToThis_t);
+    let pReal: Float32Array = Vec.vecAdd2(Vec.vectorDiv(pInf, prior_idepth), this.K_otherToThis_t);
 
     let rescaleFactor: number = (pReal[2] * prior_idepth);
 
@@ -499,24 +499,24 @@ export class DepthMap {
     let realVal_p2: number = Vec.interpolatedValue(activeKeyFrameImageData, u + 2 * epxn * rescaleFactor,
       v + 2 * epyn * rescaleFactor, this.width);
 
-    let pClose: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(this.K_otherToThis_t, max_idepth));
+    let pClose: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, max_idepth));
     // if the assumed close-point lies behind the
     // image, have to change that.
     if (pClose[2] < 0.001) {
       max_idepth = ((0.001 - pInf[2]) / this.K_otherToThis_t[2]);
-      pClose = Vec.vecAdd2(Vec.scalarMult2(this.K_otherToThis_t, max_idepth), pInf);
+      pClose = Vec.vecAdd2(Vec.scalarMul2(this.K_otherToThis_t, max_idepth), pInf);
     }
-    pClose = Vec.scalarDel(pClose, pClose[2]); // pos in new image of point
+    pClose = Vec.vectorDiv(pClose, pClose[2]); // pos in new image of point
     // (xy), assuming max_idepth
 
-    let pFar: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMult2(this.K_otherToThis_t, min_idepth));
+    let pFar: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, min_idepth));
     // if the assumed far-point lies behind the image or closter than the
     // near-point,
     // we moved past the Point it and should stop.
     if (pFar[2] < 0.001 || max_idepth < min_idepth) {
       return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
     }
-    pFar = Vec.scalarDel(pFar, pFar[2]); // pos in new image of point (xy),
+    pFar = Vec.vectorDiv(pFar, pFar[2]); // pos in new image of point (xy),
     // assuming min_idepth
 
     // check for nan due to eg division by zero.
@@ -1178,7 +1178,7 @@ export class DepthMap {
 
         let r: Float32Array = new Float32Array([x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0]);
 
-        let pn: Float32Array = Vec.vecAdd2(Vec.scalarDel(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
+        let pn: Float32Array = Vec.vecAdd2(Vec.vectorDiv(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
           trafoInv_t);
 
         let new_idepth: number = (1.0 / pn[2]);

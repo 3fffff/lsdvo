@@ -51,7 +51,7 @@ export class SIM3 {
 
   public SIM3(sim3: SIM3): SIM3 {
     let newSim3: SIM3 = new SIM3(this);
-    newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(sim3.getTranslationMat(), this.getScale()), 3));
+    newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMul2(sim3.getTranslationMat(), this.getScale()), 3));
     newSim3.se3.rotation.mulEq(sim3.getRotation());
     newSim3.scale *= sim3.getScale();
     newSim3.assertNotNaN();
@@ -67,14 +67,14 @@ export class SIM3 {
   }
 
   public mulFloat(point: Float32Array): Float32Array {
-    return Vec.vecAdd2(this.getTranslationMat(), Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMult2(point, this.getScale()), 3));
+    return Vec.vecAdd2(this.getTranslationMat(), Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMul2(point, this.getScale()), 3));
   }
 
   public static inverse(sim3: SIM3): SIM3 {
     let inverse: SIM3 = new SIM3();
     inverse.se3.rotation = SO3.inverse(sim3.se3.rotation);
     inverse.scale = 1.0 / sim3.scale;
-    inverse.se3.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), sim3.se3.translation, 3)), -inverse.scale);
+    inverse.se3.translation = Vec.scalarMul2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), sim3.se3.translation, 3)), -inverse.scale);
     inverse.assertNotNaN();
     return inverse;
   }
@@ -91,7 +91,7 @@ export class SIM3 {
     result[6] = s;
     let coeff: Float32Array = SIM3.compute_rodrigues_coefficients_sim3(s, theta);
     let cross: Float32Array = SIM3.cross_product_matrix(rotResult);
-    let W: Float32Array = Vec.matrixAdd(Vec.matrixAdd((Vec.matrixMul(Vec.matrixEye(3), coeff[0])), (Vec.matrixMul(cross, coeff[1]))), (Vec.matrixMul(Vec.multMatrix(cross, cross, 3, 3, 3, 3), coeff[2])));
+    let W: Float32Array = Vec.matrixAdd2(Vec.matrixAdd2((Vec.matrixMul(Vec.matrixEye(3), coeff[0])), (Vec.matrixMul(cross, coeff[1]))), (Vec.matrixMul(Vec.multMatrix(cross, cross, 3, 3, 3, 3), coeff[2])));
     let transResultMat: Float32Array = Vec.solveSystem(W, sim3.getTranslation());
     result[0] = transResultMat[0];
     result[1] = transResultMat[1];
@@ -117,7 +117,7 @@ export class SIM3 {
     let t: number = Vec.magnitude(rotVec);
     let coeff: Float32Array = SIM3.compute_rodrigues_coefficients_sim3(vec7[6], t);
     let cross: Float32Array = Vec.cross(rotVec, transVec);
-    let trans: Float32Array = Vec.vecAdd2(Vec.vecAdd2(Vec.scalarMult2(transVec, coeff[0]), Vec.scalarMult2(cross, coeff[1])), Vec.scalarMult2(Vec.cross(rotVec, cross), coeff[2]));
+    let trans: Float32Array = Vec.vecAdd2(Vec.vecAdd2(Vec.scalarMul2(transVec, coeff[0]), Vec.scalarMul2(cross, coeff[1])), Vec.scalarMul2(Vec.cross(rotVec, cross), coeff[2]));
     let se3: SE3 = new SE3();
     se3.setTranslation(trans);
     se3.rotation = rotation;

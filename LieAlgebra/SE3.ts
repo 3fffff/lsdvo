@@ -57,7 +57,7 @@ export class SE3 {
     if (theta_sq < 1.0E-12) {
       A = 1.0 - one_6th * theta_sq;
       B = 0.5;
-      result.setTranslation(Vec.vecAdd2(t, Vec.scalarMult2(cross, 0.5)));
+      result.setTranslation(Vec.vecAdd2(t, Vec.scalarMul2(cross, 0.5)));
     } else {
       let C: number;
       if (theta_sq < 1.0E-12) {
@@ -70,7 +70,7 @@ export class SE3 {
         B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
         C = (1.0 - A) * (inv_theta * inv_theta);
       }
-      result.setTranslation(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMult2(cross, B)), Vec.scalarMult2(Vec.cross(w, cross), C)));
+      result.setTranslation(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMul2(cross, B)), Vec.scalarMul2(Vec.cross(w, cross), C)));
     }
     result.rotation.matrix = SO3.rodrigues_so3_exp(w, A, B);
     return result;
@@ -83,12 +83,12 @@ export class SE3 {
     if (theta > 1.0E-12) {
       shtot = Math.sin(theta / 2.0) / theta;
     }
-    let halfrotator: SO3 = new SO3(SO3.exp(Vec.scalarMult2(rot, -0.5)));
+    let halfrotator: SO3 = new SO3(SO3.exp(Vec.scalarMul2(rot, -0.5)));
     let rottrans: Float32Array = Vec.matVecMultiplySqr(halfrotator.matrix, se3.getTranslation(), 3);
     if (theta > 1.0E-12) {
-      Vec.vecMinus(rottrans, Vec.scalarMult2(rot, (Vec.dot(se3.getTranslation(), rot) * (1.0 - 2.0 * shtot) / Vec.dot(rot, rot))));
+      Vec.vecMinus(rottrans, Vec.scalarMul2(rot, (Vec.dot(se3.getTranslation(), rot) * (1.0 - 2.0 * shtot) / Vec.dot(rot, rot))));
     } else {
-      Vec.vecMinus(rottrans, Vec.scalarMult2(rot, (Vec.dot(se3.getTranslation(), rot) / 24.0)));
+      Vec.vecMinus(rottrans, Vec.scalarMul2(rot, (Vec.dot(se3.getTranslation(), rot) / 24.0)));
     }
     Vec.scalarMult(rottrans, 1.0 / (2.0 * shtot));
     let result: Float32Array = new Float32Array([rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]]);
@@ -100,7 +100,7 @@ export class SE3 {
   public static inverse(se3: SE3): SE3 {
     let inverse: SE3 = new SE3();
     inverse.rotation = SO3.inverse(se3.rotation);
-    inverse.translation = Vec.scalarMult2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), se3.translation, 3)), -1);
+    inverse.translation = Vec.scalarMul2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), se3.translation, 3)), -1);
     inverse.assertNotNaN();
     return inverse;
   }
