@@ -37,11 +37,11 @@ export class LSDVO {
     this.tracker = new SE3Tracker(width, height);
     // New currentKeyframe
     this.currentKeyFrame = new Frame(image, width, height, this.frameID);
-    this.currentKeyFrame.isKF = true;
+    this.currentKeyFrame.isKF = true
 
     // Initialize map
     this.map.initializeRandomly(this.currentKeyFrame);
-    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame, this.currentKeyFrame);
     console.log("Done random initialization.");
   }
 
@@ -59,7 +59,7 @@ export class LSDVO {
     console.log("lastBadCount " + this.tracker.lastBadCount);
     const lastGoodperBed = this.tracker.lastGoodCount / (this.tracker.lastGoodCount + this.tracker.lastBadCount)
     console.log("dens:" + this.currentKeyFrame.numPoints + ";good:" + lastGoodperBed + ";usg:" + this.tracker.pointUsage)
-    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame);
+    if (this.debug) this.map.debugDepth?.debugPlotDepthMap(this.currentKeyFrame, trackingNewFrame);
     if (this.tracker.diverged || !this.tracker.trackingWasGood) {
       console.log("trackingWasGood: " + this.tracker.trackingWasGood)
       console.log("diverged: " + this.tracker.diverged);
@@ -68,7 +68,7 @@ export class LSDVO {
     // Keyframe selection
     if (!this.createNewKeyFrame && this.currentKeyFrame.numMappedOnThis > Constants.MIN_NUM_MAPPED) {
 
-      let dist: Float32Array = Vec.scalarMult2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
+      let dist: Float32Array = Vec.scalarMul2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
       let minVal: number = Math.min(0.2 + this.numkeyframes * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
       if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
@@ -121,6 +121,6 @@ export class LSDVO {
   }
 
   getRefFrameScore(distanceSquared: number, usage: number): number {
-    return distanceSquared * 12 + (1 - usage) * (1 - usage) * 12;
+    return distanceSquared * Constants.frameScore + (1 - usage) * (1 - usage) * Constants.frameScore;
   }
 }

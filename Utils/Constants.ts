@@ -94,7 +94,7 @@ export class Constants {
   }
   public static writePointCloudToFile(keyframe: Frame): void {
     console.log("WRITING KF " + keyframe.id);
-    const posData = Constants.getPointCloud(keyframe, 1)
+    const posData = Constants.getPointCloud(keyframe, 0)
     const cameraPoints: Float32Array[] = Constants.generateCameraPosePoints(keyframe);
     const allPoints: Float32Array[] = [...cameraPoints, ...posData].filter(p => p !== undefined && p.length > 0 && !isNaN(p[0]));
     // Write to file
@@ -116,10 +116,6 @@ export class Constants {
     const inverseDepth: Float32Array = keyframe.inverseDepthLvl[level];
     const inverseDepthVariance: Float32Array = keyframe.inverseDepthVarianceLvl[level];
     const posData: Float32Array[] = Array(width * height);
-    const fxInv: number = Constants.fxInv[level];
-    const fyInv: number = Constants.fyInv[level];
-    const cxInv: number = Constants.cxInv[level];
-    const cyInv: number = Constants.cyInv[level];
     const scaledTH: number = Constants.scaledDepthVarTH;
     const absTH: number = Constants.absDepthVarTH;
     for (let x = 1; x < width - 1; x++) {
@@ -135,12 +131,8 @@ export class Constants {
         // Skip if depth/variance is not valid
         if (idepth == 0 || var1 <= 0 || var1 * depth4 > scaledTH || var1 * depth4 > absTH)
           continue;
-        // Set point, calculated from inverse depth
-        posData[idx] =
-          new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1.0 / idepth]);
         // Transform
-        posData[idx] = keyframe.camToWorld.mulFloat(posData[idx]);
-        posData[idx] = new Float32Array([posData[idx][0], posData[idx][1], posData[idx][2]]);
+        posData[idx] = keyframe.camToWorld.mulFloat(keyframe.posDataLvl[level][idx]);
       }
     }
     return posData

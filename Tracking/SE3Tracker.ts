@@ -80,8 +80,9 @@ export class SE3Tracker {
 
     // For each pyramid level, coarse to fine
     for (let level = Constants.SE3TRACKING_MAX_LEVEL - 1; level >= Constants.SE3TRACKING_MIN_LEVEL; level -= 1) {
-      const [posData, colorAndVarData] = referenceFrame.createPointCloud(level);
-      this.calculateResidualAndBuffers(posData, colorAndVarData, frame, refToFrame, level);
+      const posData = referenceFrame.posDataLvl[level]
+      const colorAndVarData = referenceFrame.colorAndVarDataLvl[level]
+      this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, refToFrame, level);
 
       // Diverge when amount of pixels successfully warped into new frame < some
       // amount
@@ -94,27 +95,27 @@ export class SE3Tracker {
       }
 
       // Weighted SSD
-      let lastError: number = this.calculateWeightsAndResidual(refToFrame);
+      let lastError: number = this.#calculateWeightsAndResidual(refToFrame);
       let LM_lambda: number = this.lambdaInitial[level];
 
       // For a maximum number of iterations
       for (let iteration = 0; iteration < this.maxItsPerLvl[level]; iteration++) {
         // Calculate/update LS
-        let [A, b] = this.calculateWarpUpdate();
+        let [A, b] = this.#calculateWarpUpdate();
 
         let incTry: number = 0;
         while (true) {
           incTry++;
 
           // Solve LS to get increment
-          let inc: Float32Array = this.calcIncrement(A, b, LM_lambda);
+          let inc: Float32Array = this.#calcIncrement(A, b, LM_lambda);
           // console.log(incTry + " : " + LM_lambda + inc);
           // Apply increment
           let newRefToFrame: SE3 = SE3.exp(inc);
           newRefToFrame.mulEq(refToFrame);
 
           // Re-evaluate residual
-          this.calculateResidualAndBuffers(posData, colorAndVarData, frame, newRefToFrame, level);
+          this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, newRefToFrame, level);
 
           // Check for divergence
           if (this.warpedCount < Constants.MIN_GOODPERALL_PIXEL_ABSMIN * frame.width(level)
@@ -127,7 +128,7 @@ export class SE3Tracker {
           }
 
           // Calculate weighted residual/error
-          let error: number = this.calculateWeightsAndResidual(newRefToFrame);
+          let error: number = this.#calculateWeightsAndResidual(newRefToFrame);
           if (error < lastError) {
             // Accept increment
             refToFrame = newRefToFrame;
@@ -186,7 +187,7 @@ export class SE3Tracker {
     return frameToRef;
   }
 
-  calcIncrement(A: Float32Array, b: Float32Array, LM_lambda: number): Float32Array {
+  #calcIncrement(A: Float32Array, b: Float32Array, LM_lambda: number): Float32Array {
     for (let i = 0; i < b.length; i++)
       A[i * b.length + i] = A[i * b.length + i] * (1 + LM_lambda); // A(i,i) *= 1+LM_lambda;
     return Vec.solveSystem(A, b);
@@ -198,7 +199,7 @@ export class SE3Tracker {
    * @return sum of un-weighted residuals, divided by good pixel count.
    *
    */
-  calculateResidualAndBuffers(posData: Array<Float32Array>, colorAndVarData: Array<Float32Array>, frame: Frame,
+  #calculateResidualAndBuffers(posData: Array<Float32Array>, colorAndVarData: Array<Float32Array>, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
     this.calculateResidualAndBuffersCount++;
@@ -300,7 +301,7 @@ export class SE3Tracker {
    *
    * @return sum of weighted residuals divided by warpedCount
    */
-  calculateWeightsAndResidual(referenceToFrame: SE3): number {
+  #calculateWeightsAndResidual(referenceToFrame: SE3): number {
     let [tx, ty, tz] = referenceToFrame.getTranslation();
     let sumRes: number = 0;
 
@@ -332,7 +333,7 @@ export class SE3Tracker {
     return sumRes / this.warpedCount;
   }
 
-  calculateWarpUpdate(): [Float32Array, Float32Array] {
+  #calculateWarpUpdate(): [Float32Array, Float32Array] {
     const A = new Float32Array(36);
     const b = new Float32Array(6)
     //let error = 0;
@@ -360,13 +361,13 @@ export class SE3Tracker {
       // Integrate into A and b
       Vec.matrixAdd(A, Vec.matrixMul(Vec.vecTransMul(v, v), this.bufWeightP[i]));
       Vec.vecMinus(b, (Vec.scalarMul2(v, r * this.bufWeightP[i])));
-     // error += r * r * this.bufWeightP[i];
+      // error += r * r * this.bufWeightP[i];
     }
     // Solve LS
     Vec.matrixDiv(A, this.warpedCount);
-    Vec.vectorDiv0(b, this.warpedCount)
+    Vec.vectorDiv0(b, this.warpedCount);
     Vec.vecNeg(b);
-   // error /= this.warpedCount;
+    // error /= this.warpedCount;
     return [A, b]
   }
 }

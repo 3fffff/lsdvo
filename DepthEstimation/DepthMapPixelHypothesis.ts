@@ -10,12 +10,6 @@ export class DepthMapPixelHypothesis {
    * repeatedly on this pixel.
    */
   public blacklisted: number;
-
-  /**
-   * How many frames to skip ahead in the tracked-frames-queue.
-   */
-  public nextStereoFrameMinID: number;
-
   /**
    * Counter for validity, basically how many successful observations are
    * incorporated.
@@ -41,7 +35,6 @@ export class DepthMapPixelHypothesis {
     if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && ((typeof idepth_var_smoothed === 'number') || idepth_var_smoothed === null) && ((typeof my_validity_counter === 'number') || my_validity_counter === null)) {
       this.isValid = true;
       this.blacklisted = 0;
-      this.nextStereoFrameMinID = 0;
       this.validity_counter = my_validity_counter;
       this.idepth = idepth;
       this.idepth_var = idepth_var;
@@ -53,7 +46,6 @@ export class DepthMapPixelHypothesis {
       let my_validity_counter: any = __args[2];
       this.isValid = true;
       this.blacklisted = 0;
-      this.nextStereoFrameMinID = 0;
       this.validity_counter = my_validity_counter;
       this.idepth = idepth;
       this.idepth_var = idepth_var;
@@ -62,7 +54,6 @@ export class DepthMapPixelHypothesis {
     } else if (idepth instanceof DepthMapPixelHypothesis) {
       this.isValid = idepth.isValid;
       this.blacklisted = idepth.blacklisted;
-      this.nextStereoFrameMinID = idepth.nextStereoFrameMinID;
       this.validity_counter = idepth.validity_counter;
       this.idepth = idepth.idepth;
       this.idepth_var = idepth.idepth_var;

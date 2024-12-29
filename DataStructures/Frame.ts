@@ -13,6 +13,8 @@ export class Frame {
   public imageGradientMaxArrayLvl: Array<Float32Array>;
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
+  public posDataLvl: Array<Array<Float32Array>>;
+  public colorAndVarDataLvl: Array<Array<Float32Array>>;
   public IDepthBeenSet: boolean = false;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
@@ -33,6 +35,8 @@ export class Frame {
     this.imageGradientYArrayLvl.length = 0;
     this.inverseDepthVarianceLvl.length = 0;
     this.inverseDepthLvl.length = 0;
+    this.posDataLvl.length = 0;
+    this.colorAndVarDataLvl.length = 0
     if (!this.isKF) {
       this.imageGradientMaxArrayLvl.length = 0;
       this.imageArrayLvl.length = 0;
@@ -49,6 +53,8 @@ export class Frame {
     this.imageGradientMaxArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthVarianceLvl = Array(Constants.PYRAMID_LEVELS);
+    this.posDataLvl = Array(Constants.PYRAMID_LEVELS);
+    this.colorAndVarDataLvl = Array(Constants.PYRAMID_LEVELS)
     for (let i: number = 0; i < Constants.PYRAMID_LEVELS; i++) {
       const w = this.width(i)
       const h = this.height(i)
@@ -145,11 +151,12 @@ export class Frame {
 
     // Do lower levels
     for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
-      this.buildIDepthAndIDepthVar(level);
+      this.#buildIDepthAndIDepthVar(level);
 
+    this.#createPointCloud()
   }
 
-  buildIDepthAndIDepthVar(level: number) {
+  #buildIDepthAndIDepthVar(level: number) {
     if (level <= 0) {
       console.error("Invalid level parameter!");
       return;
@@ -218,28 +225,31 @@ export class Frame {
   /**
    * Create 3D points from inverse depth values and count valid points
    */
-  public createPointCloud(level: number) {
-    const width: number = this.width(level);
-    const height: number = this.height(level);
-    const image: Float32Array = this.imageArrayLvl[level];
-    const inverseDepth: Float32Array = this.inverseDepthLvl[level];
-    const inverseDepthVariance: Float32Array = this.inverseDepthVarianceLvl[level];
-    const fxInv: number = Constants.fxInv[level];
-    const fyInv: number = Constants.fyInv[level];
-    const cxInv: number = Constants.cxInv[level];
-    const cyInv: number = Constants.cyInv[level];
-    const posData = Array(width * height);
-    const colorAndVarData = Array(width * height);
-    for (let x: number = 1; x < width - 1; x++) {
-      for (let y: number = 1; y < height - 1; y++) {
-        const idx: number = x + y * width;
-        const idepth: number = inverseDepth[idx];
-        const vrb: number = inverseDepthVariance[idx];
-        if (idepth === 0 || vrb <= 0) continue;
-        posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
-        colorAndVarData[idx] = new Float32Array([image[idx], vrb]);
+  #createPointCloud() {
+    for (let level = 0; level < Constants.PYRAMID_LEVELS; level++) {
+      const width: number = this.width(level);
+      const height: number = this.height(level);
+      const image: Float32Array = this.imageArrayLvl[level];
+      const inverseDepth: Float32Array = this.inverseDepthLvl[level];
+      const inverseDepthVariance: Float32Array = this.inverseDepthVarianceLvl[level];
+      const fxInv: number = Constants.fxInv[level];
+      const fyInv: number = Constants.fyInv[level];
+      const cxInv: number = Constants.cxInv[level];
+      const cyInv: number = Constants.cyInv[level];
+      const posData = Array(width * height);
+      const colorAndVarData = Array(width * height);
+      for (let x: number = 1; x < width - 1; x++) {
+        for (let y: number = 1; y < height - 1; y++) {
+          const idx: number = x + y * width;
+          const idepth: number = inverseDepth[idx];
+          const vrb: number = inverseDepthVariance[idx];
+          if (idepth == 0 || vrb <= 0) continue;
+          posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
+          colorAndVarData[idx] = new Float32Array([image[idx], vrb]);
+        }
       }
+      this.posDataLvl[level] = posData
+      this.colorAndVarDataLvl[level] = colorAndVarData
     }
-    return [posData, colorAndVarData]
   }
 }

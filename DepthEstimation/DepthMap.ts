@@ -17,7 +17,7 @@ export class DepthMap {
   static FAIL_VAR_INC_FAC: number = 1.1; // after a failed stereo observation, the
   // variance is increased by this factor.
   static MAX_VAR: number = (0.5 * 0.5); // initial variance on
-  // creation - if variance becomeslarter than this, hypothesis is removed.
+  // creation - if variance becomeslarger than this, hypothesis is removed.
   static VAR_RANDOM_INIT_INITIAL: number = (0.5 * DepthMap.MAX_VAR); // initial
   // variance for Random Initialization
 
@@ -330,8 +330,6 @@ export class DepthMap {
       if (target.validity_counter < 0)
         target.validity_counter = 0;
 
-      //target.nextStereoFrameMinID = 0;
-
       target.idepth_var *= DepthMap.FAIL_VAR_INC_FAC;
       if (target.idepth_var > Constants.MAX_VAR) {
         target.isValid = false;
@@ -387,8 +385,6 @@ export class DepthMap {
 
         if (result_eplLength < 0.5 * Constants.MIN_EPL_LENGTH_CROP)
           inc *= 3;
-
-        //target.nextStereoFrameMinID = refFrame.id + inc;
       }
 
       return true;
@@ -1140,7 +1136,6 @@ export class DepthMap {
 
     // Update depth in keyframe
     this.activeKeyFrame.setDepth(this.currentDepthMap);
-
   }
 
   propagateDepth(new_keyframe: Frame): void {
