@@ -57,32 +57,24 @@ export class SO3 {
    */
   public static rodrigues_so3_exp(w: Float32Array, A: number, B: number): Float32Array {
     let R: Float32Array = new Float32Array(3 * 3);
-    {
       let wx2: number = <number>w[0] * w[0];
       let wy2: number = <number>w[1] * w[1];
       let wz2: number = <number>w[2] * w[2];
       R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
       R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
       R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);
-    };
-    {
-      let a: number = A * w[2];
-      let b: number = B * (w[0] * w[1]);
-      R[0 * 3 + 1] = b - a;
-      R[1 * 3 + 0] = b + a;
-    };
-    {
-      let a: number = A * w[1];
-      let b: number = B * (w[0] * w[2]);
-      R[0 * 3 + 2] = b + a;
-      R[2 * 3 + 0] = b - a;
-    };
-    {
-      let a: number = A * w[0];
-      let b: number = B * (w[1] * w[2]);
-      R[1 * 3 + 2] = b - a;
-      R[2 * 3 + 1] = b + a;
-    };
+      let a2: number = A * w[2];
+      let b01: number = B * (w[0] * w[1]);
+      R[0 * 3 + 1] = b01 - a2;
+      R[1 * 3 + 0] = b01 + a2;
+      let a1: number = A * w[1];
+      let b02: number = B * (w[0] * w[2]);
+      R[0 * 3 + 2] = b02 + a1;
+      R[2 * 3 + 0] = b02 - a1;
+      let a0: number = A * w[0];
+      let b12: number = B * (w[1] * w[2]);
+      R[1 * 3 + 2] = b12 - a0;
+      R[2 * 3 + 1] = b12 + a0;
     return R;
   }
 
