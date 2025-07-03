@@ -1250,9 +1250,9 @@ export class DepthMap {
       }
 
     // swap!
-    let temp: DepthMapPixelHypothesis[] = this.currentDepthMap.slice();
-    this.currentDepthMap = this.otherDepthMap.slice();
-    this.otherDepthMap = temp.slice();
+    let temp: DepthMapPixelHypothesis[] = structuredClone(this.currentDepthMap);
+    this.currentDepthMap = structuredClone(this.otherDepthMap);
+    this.otherDepthMap = temp;
   }
   /*
    * Make val non-zero
