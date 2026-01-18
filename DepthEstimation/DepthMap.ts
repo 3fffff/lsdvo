@@ -126,8 +126,8 @@ export class DepthMap {
     //  this.oldest_referenceFrame = referenceFrames[referenceFrames.length - 1];
     this.referenceFrame = frame
 
-   // this.referenceFrameByID = [];
-   // this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
+    // this.referenceFrameByID = [];
+    // this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
 
     // For each frame
     // console.log("Updating keyframe " + activeKeyFrame.id + " with " +
@@ -227,8 +227,6 @@ export class DepthMap {
     }
   }
   observeDepthCreate(x: number, y: number, idx: number): boolean {
-    let target: DepthMapPixelHypothesis = this.currentDepthMap[idx];
-
     // ???
     // What is activeKeyFrameIsReactivated?
     // Key frame was used before?
@@ -259,20 +257,12 @@ export class DepthMap {
     result_var = lineStereoResult[2];
     result_eplLength = lineStereoResult[3];
 
-    if (error == -3 || error == -2) {
-      target.blacklisted--;
-    }
-
     if (error < 0 || result_var > Constants.MAX_VAR) {
       return false;
     }
 
     result_idepth = this.UNZERO(result_idepth);
-
-    // add hypothesis
-    // Set/change the hypothesis
-    target = new DepthMapPixelHypothesis(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
-
+    this.currentDepthMap[idx] = new DepthMapPixelHypothesis(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
     return true;
   }
 
@@ -904,7 +894,7 @@ export class DepthMap {
 
     result_eplLength = eplLength;
 
-    this.debugDepth?.debugImageStereoLines(pClose[0],pClose[1],pFar[0],pFar[1])
+    this.debugDepth?.debugImageStereoLines(pClose[0], pClose[1], pFar[0], pFar[1])
 
     return new Float32Array([best_match_err, result_idepth, result_var, result_eplLength]);
   }
@@ -1250,8 +1240,8 @@ export class DepthMap {
       }
 
     // swap!
-    let temp: DepthMapPixelHypothesis[] = structuredClone(this.currentDepthMap);
-    this.currentDepthMap = structuredClone(this.otherDepthMap);
+    let temp = this.currentDepthMap.map(h => new DepthMapPixelHypothesis(h));
+    this.currentDepthMap = this.otherDepthMap.map(h => new DepthMapPixelHypothesis(h));
     this.otherDepthMap = temp;
   }
   /*

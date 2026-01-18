@@ -8,15 +8,9 @@ export class SIM3 {
   public scale: number = 0;
 
   public constructor(se3?: any, scale?: any) {
-    if (((se3 != null && se3 instanceof SE3) || se3 === null) && ((typeof scale === 'number') || scale === null)) {
+    if (se3 != null && se3 instanceof SE3) {
       this.se3 = se3;
-      this.scale = scale;
-      this.assertNotNaN();
-    } else if (((se3 != null && se3 instanceof SIM3) || se3 === null) && scale === undefined) {
-      let __args = arguments;
-      let sim3: any = __args[0];
-      this.se3 = new SE3(sim3.se3);
-      this.scale = sim3.scale;
+      this.scale = scale ?? 1;
       this.assertNotNaN();
     } else {
       this.se3 = new SE3();
@@ -58,10 +52,22 @@ export class SIM3 {
     return newSim3;
   }
 
+  public multiply(sim3: SIM3): SIM3 {
+    let newSim3: SIM3 = new SIM3(this);
+    newSim3.se3.translation = Vec.vecAdd2(
+      newSim3.se3.translation,
+      Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMul2(sim3.getTranslationMat(), this.getScale()), 3)
+    );
+    newSim3.se3.rotation.mulEq(sim3.getRotation());
+    newSim3.scale *= sim3.getScale();
+    newSim3.assertNotNaN();
+    return newSim3;
+  }
+
   public mul(sim3?: any): any {
-    if (((sim3 != null && sim3 instanceof <any>SIM3) || sim3 === null)) {
-      return this.SIM3(sim3);
-    } else if (sim3 != null && sim3 instanceof Float32Array) {
+    if (sim3 instanceof SIM3) {
+      return this.multiply(sim3);
+    } else if (sim3 instanceof Float32Array) {
       return this.mulFloat(sim3);
     } else throw new Error('invalid overload');
   }

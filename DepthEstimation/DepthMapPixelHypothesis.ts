@@ -31,37 +31,42 @@ export class DepthMapPixelHypothesis {
   public idepth_var_smoothed: number;
 
 
-  public constructor(idepth?: any, idepth_smoothed?: any, idepth_var?: any, idepth_var_smoothed?: any, my_validity_counter?: any) {
-    if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && ((typeof idepth_var_smoothed === 'number') || idepth_var_smoothed === null) && ((typeof my_validity_counter === 'number') || my_validity_counter === null)) {
+  constructor(...args: any[]) {
+    if (args.length === 1 && args[0] instanceof DepthMapPixelHypothesis) {
+      const src = args[0];
+      this.isValid = src.isValid;
+      this.blacklisted = src.blacklisted;
+      this.validity_counter = src.validity_counter;
+      this.idepth = src.idepth;
+      this.idepth_var = src.idepth_var;
+      this.idepth_smoothed = src.idepth_smoothed;
+      this.idepth_var_smoothed = src.idepth_var_smoothed;
+    } else if (args.length === 3 && typeof args[0] === 'number') {
+      // Minimal: idepth, idepth_var, validity_counter
       this.isValid = true;
       this.blacklisted = 0;
-      this.validity_counter = my_validity_counter;
-      this.idepth = idepth;
-      this.idepth_var = idepth_var;
-      this.idepth_smoothed = idepth_smoothed;
-      this.idepth_var_smoothed = idepth_var_smoothed;
-    } else if (((typeof idepth === 'number') || idepth === null) && ((typeof idepth_smoothed === 'number') || idepth_smoothed === null) && ((typeof idepth_var === 'number') || idepth_var === null) && idepth_var_smoothed === undefined && my_validity_counter === undefined) {
-      let __args = arguments;
-      let idepth_var: any = __args[1];
-      let my_validity_counter: any = __args[2];
-      this.isValid = true;
-      this.blacklisted = 0;
-      this.validity_counter = my_validity_counter;
-      this.idepth = idepth;
-      this.idepth_var = idepth_var;
+      this.validity_counter = args[2];
+      this.idepth = args[0];
+      this.idepth_var = args[1];
       this.idepth_smoothed = -1;
       this.idepth_var_smoothed = -1;
-    } else if (idepth instanceof DepthMapPixelHypothesis) {
-      this.isValid = idepth.isValid;
-      this.blacklisted = idepth.blacklisted;
-      this.validity_counter = idepth.validity_counter;
-      this.idepth = idepth.idepth;
-      this.idepth_var = idepth.idepth_var;
-      this.idepth_smoothed = idepth.idepth_smoothed;
-      this.idepth_var_smoothed = idepth.idepth_var_smoothed;
+    } else if (args.length >= 4) {
+      // Full init
+      this.isValid = true;
+      this.blacklisted = 0;
+      this.validity_counter = args[4] ?? 0;
+      this.idepth = args[0] ?? 0;
+      this.idepth_var = args[2] ?? 0;
+      this.idepth_smoothed = args[1] ?? -1;
+      this.idepth_var_smoothed = args[3] ?? -1;
     } else {
       this.isValid = false;
       this.blacklisted = 0;
+      this.validity_counter = 0;
+      this.idepth = 0;
+      this.idepth_var = 0;
+      this.idepth_smoothed = -1;
+      this.idepth_var_smoothed = -1;
     }
   }
 

@@ -19,7 +19,7 @@ export class LSDVO {
   constructor(K: Float32Array, mapping: boolean, debug: boolean) {
     this.debug = debug
     this.mapping = mapping
-    Constants.setK(K[0], K[1], K[2], K[3]);
+    Constants.setK(K[0], K[4], K[2], K[5]);
   }
 
   track(image: Float32Array, width: number, height: number): void {

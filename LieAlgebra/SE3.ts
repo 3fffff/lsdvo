@@ -7,17 +7,11 @@ export class SE3 {
   public translation: Float32Array;
 
   public constructor(rotation?: any, translation?: any) {
-    if (((rotation != null && rotation instanceof <any>SO3) || rotation === null) && ((translation != null && translation instanceof <any>Float32Array && (translation.length == 0 || translation[0] == null || (typeof translation[0] === 'number'))) || translation === null)) {
+    if (rotation != null && rotation instanceof SO3) {
       this.rotation = rotation;
-      this.translation = translation;
+      this.translation = translation ?? new Float32Array([0, 0, 0]);
       this.assertNotNaN();
-    } else if (((rotation != null && rotation instanceof <any>SE3) || rotation === null) && translation === undefined) {
-      let __args = arguments;
-      let se3: any = __args[0];
-      this.translation = se3.translation;
-      this.rotation = new SO3(se3.rotation);
-      this.assertNotNaN();
-    } else{
+    } else {
       this.rotation = new SO3();
       this.setTranslation(new Float32Array([0, 0, 0]));
       this.assertNotNaN();
@@ -85,16 +79,20 @@ export class SE3 {
     }
     let halfrotator: SO3 = new SO3(SO3.exp(Vec.scalarMul2(rot, -0.5)));
     let rottrans: Float32Array = Vec.matVecMultiplySqr(halfrotator.matrix, se3.getTranslation(), 3);
+
     if (theta > 1.0E-12) {
-      Vec.vecMinus(rottrans, Vec.scalarMul2(rot, (Vec.dot(se3.getTranslation(), rot) * (1.0 - 2.0 * shtot) / Vec.dot(rot, rot))));
+      let correction = Vec.scalarMul2(
+        rot,
+        (Vec.dot(se3.getTranslation(), rot) * (1.0 - 2.0 * shtot) / Vec.dot(rot, rot))
+      );
+      rottrans = Vec.vecMinus2(rottrans, correction);
     } else {
-      Vec.vecMinus(rottrans, Vec.scalarMul2(rot, (Vec.dot(se3.getTranslation(), rot) / 24.0)));
+      let correction = Vec.scalarMul2(rot, Vec.dot(se3.getTranslation(), rot) / 24.0);
+      rottrans = Vec.vecMinus2(rottrans, correction);
     }
-    Vec.scalarMult(rottrans, 1.0 / (2.0 * shtot));
-    let result: Float32Array = new Float32Array([rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]]);
-    for (let i = 0; i < result.length; i++)
-      if (isNaN(result[i])) throw new Error("isNaN(d)");
-    return result;
+
+    rottrans = Vec.scalarMul2(rottrans, 1.0 / (2.0 * shtot));
+    return new Float32Array([rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]]);
   }
 
   public static inverse(se3: SE3): SE3 {
@@ -134,7 +132,6 @@ export class SE3 {
     return new SE3(new SO3(rotation), translation);
   }
 
-  
   public mulFloat(point: Float32Array): Float32Array {
     return Vec.vecAdd2(this.getTranslation(), Vec.matVecMultiplySqr(this.getRotationMatrix(), point, 3));
   }

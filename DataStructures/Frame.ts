@@ -121,7 +121,6 @@ export class Frame {
   }
 
   public setDepth(newDepth: Array<DepthMapPixelHypothesis>): void {
-
     let numIdepth: number = 0;
     let sumIdepth: number = 0;
 
@@ -130,12 +129,10 @@ export class Frame {
       this.inverseDepthLvl[0] = new Float32Array(pixels);
     if (!this.inverseDepthVarianceLvl[0])
       this.inverseDepthVarianceLvl[0] = new Float32Array(pixels);
-
     for (let i = 0; i < pixels; i++) {
       if (newDepth[i].isValid && newDepth[i].idepth_smoothed >= -0.05) {
         this.inverseDepthLvl[0][i] = newDepth[i].idepth_smoothed;
         this.inverseDepthVarianceLvl[0][i] = newDepth[i].idepth_var_smoothed;
-
         numIdepth++;
         sumIdepth += newDepth[i].idepth_smoothed;
       } else {
@@ -143,13 +140,9 @@ export class Frame {
         this.inverseDepthVarianceLvl[0][i] = -1;
       }
     }
-
-    this.meanIdepth = sumIdepth / numIdepth;
+    this.meanIdepth = numIdepth > 0 ? sumIdepth / numIdepth : 0;
     this.numPoints = numIdepth;
-
     this.IDepthBeenSet = true;
-
-    // Do lower levels
     for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
       this.#buildIDepthAndIDepthVar(level);
 
@@ -216,10 +209,17 @@ export class Frame {
   buildImageLevel(imageArraySrc: Float32Array, width: number, height: number): Float32Array {
     const imageArrayDst: Float32Array = new Float32Array((width * height) / 4)
     let dstIdx: number = 0;
-    for (let y: number = 0; y < width * height; y += width * 2)
-      for (let x: number = 0; x < width; x += 2)
-        imageArrayDst[dstIdx++] = (imageArraySrc[x + y] + imageArraySrc[x + y + 1] + imageArraySrc[x + y + width] + imageArraySrc[x + y + 1 + width]) * 0.25;
-    return imageArrayDst
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        imageArrayDst[dstIdx++] = (
+          imageArraySrc[x + y * width] +
+          imageArraySrc[(x + 1) + y * width] +
+          imageArraySrc[x + (y + 1) * width] +
+          imageArraySrc[(x + 1) + (y + 1) * width]
+        ) * 0.25;
+      }
+    }
+    return imageArrayDst;
   }
 
   /**

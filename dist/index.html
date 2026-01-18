@@ -10,52 +10,67 @@
 </body>
 <script src='debug.js'></script>
 <script>
-  const cnv = document.getElementById('canvas')
-  const ctx = document.getElementById('canvas').getContext('2d');
-  const lsd = new LSD.LSDVO(new Float32Array([685.720, 685.636, 630.858, 511.918]), true, true)
+  const cnv = document.getElementById('canvas');
+  const ctx = cnv.getContext('2d');
+  // Full 3x3 camera matrix: [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+  const K = new Float32Array([
+    685.720, 0, 630.858,
+    0, 685.636, 511.918,
+    0, 0, 1
+  ]);
+  const lsd = new LSD.LSDVO(K, true, true);
 
-  function handleFileSelect(e) {
-    const files = e.target.files
-    loadImg(...files)
-      .then((img) => timeout(img))
-      .catch(err => console.error(err));
-  }
-  const loadImg = (...paths) => Promise.all(paths.map(loadImage));
-
-  function loadImage(src) {
-    return new Promise((resolve, reject) => {
-      console.log(src)
-      const img = new Image();
-      img.addEventListener("load", () => resolve(img));
-      img.addEventListener("error", err => reject(err));
-      img.src = URL.createObjectURL(src);
-    });
-  };
-
-  function timeout(img) {
-    for (let i = 0; i < img.length; i++) {
-      setTimeout(function () {
-        cnv.height = img[i].height / 2
-        cnv.width = img[i].width / 2
-        ctx.drawImage(img[i], 0, 0, img[i].width / 2, img[i].height / 2);
-        const idata = ctx.getImageData(0, 0, img[i].width / 2, img[i].height / 2)
-        const imgDataG = ctx.createImageData(Math.floor(img[i].width / 2), Math.floor(img[i].height / 2));
-        const d = getGray(idata.data, idata.width, idata.height)
-        console.time("All")
-        lsd.track(d, idata.width, idata.height)
-        console.timeEnd("All")
-      }, 0, i)
+  async function handleFileSelect(e) {
+    const files = Array.from(e.target.files);
+    try {
+      for (const file of files) {
+        const img = await loadImage(file);
+        processFrame(img);
+      }
+    } catch (err) {
+      console.error("Error processing images:", err);
     }
   }
 
-  document.getElementById("inputFile").addEventListener("change", handleFileSelect)
-
-  function getGray(dataAlp, w, h) {
-    let data = new Array(w * h);
-    for (let i = 0; i < w * h * 4; i += 4)
-      data[i / 4] = dataAlp[i + 0];
-    return data
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src); // Prevent memory leak
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
   }
+
+  function processFrame(img) {
+    // Resize canvas to half resolution
+    const w = Math.floor(img.width / 2);
+    const h = Math.floor(img.height / 2);
+    cnv.width = w;
+    cnv.height = h;
+
+    // Draw and extract grayscale
+    ctx.drawImage(img, 0, 0, w, h);
+    const idata = ctx.getImageData(0, 0, w, h);
+    const gray = getGray(idata.data, w, h);
+
+    // Track frame
+    console.time("Track");
+    lsd.track(gray, w, h);
+    console.timeEnd("Track");
+  }
+
+  function getGray(rgba, width, height) {
+    const gray = new Array(width * height);
+    for (let i = 0; i < rgba.length; i += 4) {
+      gray[i >> 2] = rgba[i]; // Use red channel (or compute luminance)
+    }
+    return gray;
+  }
+
+  document.getElementById("inputFile").addEventListener("change", handleFileSelect);
 </script>
 
 </html>

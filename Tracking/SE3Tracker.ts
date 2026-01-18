@@ -124,7 +124,7 @@ export class SE3Tracker {
             this.diverged = true;
             this.trackingWasGood = false;
             console.error("Diverged.(2)")
-            return new SE3()
+            return frameToRefInitialEstimate;
           }
 
           // Calculate weighted residual/error
@@ -189,7 +189,7 @@ export class SE3Tracker {
 
   #calcIncrement(A: Float32Array, b: Float32Array, LM_lambda: number): Float32Array {
     for (let i = 0; i < b.length; i++)
-      A[i * b.length + i] = A[i * b.length + i] * (1 + LM_lambda); // A(i,i) *= 1+LM_lambda;
+      A[i * b.length + i] *= (1 + LM_lambda); // A(i,i) *= 1+LM_lambda;
     return Vec.solveSystem(A, b);
   }
 

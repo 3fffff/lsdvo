@@ -18,7 +18,7 @@ export class Constants {
   /**
    * ============== constants for validity handling =======================
    */
-  public static VALIDITY_COUNTER_MAX: number = 0.5;
+  public static VALIDITY_COUNTER_MAX: number = 50;
   public static VALIDITY_COUNTER_MAX_VARIABLE: number = 250.0;
   public static VALIDITY_COUNTER_INC: number = 5;
   public static VALIDITY_COUNTER_DEC: number = 5;
@@ -69,27 +69,28 @@ export class Constants {
    * Sets camera matrix for all pyramid levels. Pass in parameters for level 0.
    */
   public static setK(fx: number, fy: number, cx: number, cy: number) {
-    Constants.fx[0] = fx;
-    Constants.fy[0] = fy;
-    Constants.cx[0] = cx;
-    Constants.cy[0] = cy;
-    Constants.K.splice(0, 0, new Float32Array([Constants.fx[0], 0, Constants.cx[0], 0, Constants.fy[0], Constants.cy[0], 0, 0, 1]));
-    Constants.KInv.splice(0, 0, Vec.invert(Constants.K[0], 3));
-    Constants.fxInv[0] = Constants.KInv[0][0 * 3 + 0];
-    Constants.fyInv[0] = Constants.KInv[0][1 * 3 + 1];
-    Constants.cxInv[0] = Constants.KInv[0][0 * 3 + 2];
-    Constants.cyInv[0] = Constants.KInv[0][1 * 3 + 2];
-    for (let level: number = 1; level < Constants.PYRAMID_LEVELS; level++) {
-      Constants.fx[level] = Constants.fx[level - 1] * 0.5;
-      Constants.fy[level] = Constants.fy[level - 1] * 0.5;
-      Constants.cx[level] = (Constants.cx[0] + 0.5) / (1 << level) - 0.5;
-      Constants.cy[level] = (Constants.cy[0] + 0.5) / (1 << level) - 0.5;
-      Constants.K.splice(level, 0, new Float32Array([Constants.fx[level], 0, Constants.cx[level], 0, Constants.fy[level], Constants.cy[level], 0, 0, 1]));
-      Constants.KInv.splice(level, 0, Vec.invert(Constants.K[level], 3));
-      Constants.fxInv[level] = Constants.KInv[level][0 * 3 + 0];
-      Constants.fyInv[level] = Constants.KInv[level][1 * 3 + 1];
-      Constants.cxInv[level] = Constants.KInv[level][0 * 3 + 2];
-      Constants.cyInv[level] = Constants.KInv[level][1 * 3 + 2];
+    for (let level = 0; level < Constants.PYRAMID_LEVELS; level++) {
+      if (level === 0) {
+        Constants.fx[0] = fx;
+        Constants.fy[0] = fy;
+        Constants.cx[0] = cx;
+        Constants.cy[0] = cy;
+      } else {
+        Constants.fx[level] = Constants.fx[level - 1] * 0.5;
+        Constants.fy[level] = Constants.fy[level - 1] * 0.5;
+        Constants.cx[level] = (Constants.cx[0] + 0.5) / (1 << level) - 0.5;
+        Constants.cy[level] = (Constants.cy[0] + 0.5) / (1 << level) - 0.5;
+      }
+      Constants.K[level] = new Float32Array([
+        Constants.fx[level], 0, Constants.cx[level],
+        0, Constants.fy[level], Constants.cy[level],
+        0, 0, 1
+      ]);
+      Constants.KInv[level] = Vec.invert(Constants.K[level], 3);
+      Constants.fxInv[level] = Constants.KInv[level][0];
+      Constants.fyInv[level] = Constants.KInv[level][4];
+      Constants.cxInv[level] = Constants.KInv[level][2];
+      Constants.cyInv[level] = Constants.KInv[level][5];
     }
   }
   public static writePointCloudToFile(keyframe: Frame): void {

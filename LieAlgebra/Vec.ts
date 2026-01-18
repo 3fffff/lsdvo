@@ -124,12 +124,17 @@ export class Vec {
   }
 
   public static multMatrix(A: Float32Array, B: Float32Array, aRows: number, aColumns: number, bRows: number, bColumns: number): Float32Array {
-    if (aColumns !== bRows) throw new Error("A:Rows: " + aColumns + " did not match B:Columns " + bRows + ".");
+    if (aColumns !== bRows) throw new Error("A columns must match B rows");
     let C: Float32Array = new Float32Array(aRows * bColumns);
-    for (let i: number = 0; i < aRows; i++)
-      for (let j: number = 0; j < bColumns; j++)
-        for (let k: number = 0; k < aColumns; k++)
-          C[i * aRows + j] += A[i * aRows + k] * B[k * bRows + j];
+    for (let i = 0; i < aRows; i++) {
+      for (let j = 0; j < bColumns; j++) {
+        let sum = 0;
+        for (let k = 0; k < aColumns; k++) {
+          sum += A[i * aColumns + k] * B[k * bColumns + j];
+        }
+        C[i * bColumns + j] = sum;
+      }
+    }
     return C;
   }
 
@@ -194,7 +199,7 @@ export class Vec {
   }
 
   public static vecNeg(a: Float32Array): void {
-    for (let i: number = 0; i < a.length; i++) a[i] = a[i] * (-1); 
+    for (let i: number = 0; i < a.length; i++) a[i] = a[i] * (-1);
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {
