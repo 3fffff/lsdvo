@@ -129,7 +129,6 @@ export class SO3 {
 
   public static inverse(so3: SO3): SO3 {
     let inverse: SO3 = new SO3(Vec.matrixTranspose(so3.matrix, 3));
-    inverse.assertNotNaN();
     return inverse;
   }
 
@@ -139,7 +138,6 @@ export class SO3 {
    */
   public mulEq(so3: SO3) {
     this.matrix = Vec.multMatrix(this.matrix, so3.matrix, 3, 3, 3, 3);
-    this.assertNotNaN();
   }
 
   public mul(so3: SO3): SO3 {
@@ -160,11 +158,5 @@ export class SO3 {
     Vec.setRow(this.matrix, vec0, 0);
     Vec.setRow(this.matrix, vec1, 1);
     Vec.setRow(this.matrix, vec2, 2);
-  }
-
-  public assertNotNaN() {
-    let array = this.ln();
-    for (let i = 0; i < array.length; i++)
-      if (isNaN(array[i])) throw new Error("isNaN(d);");
   }
 }

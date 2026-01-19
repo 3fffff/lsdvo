@@ -14,7 +14,8 @@ export class Frame {
   public inverseDepthLvl: Array<Float32Array>;
   public inverseDepthVarianceLvl: Array<Float32Array>;
   public posDataLvl: Array<Array<Float32Array>>;
-  public colorAndVarDataLvl: Array<Array<Float32Array>>;
+  public colorDataLvl: Array<Float32Array>;
+  public varDataLvl: Array<Float32Array>;
   public IDepthBeenSet: boolean = false;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
@@ -36,7 +37,8 @@ export class Frame {
     this.inverseDepthVarianceLvl.length = 0;
     this.inverseDepthLvl.length = 0;
     this.posDataLvl.length = 0;
-    this.colorAndVarDataLvl.length = 0
+    this.colorDataLvl.length = 0
+    this.varDataLvl.length = 0
     if (!this.isKF) {
       this.imageGradientMaxArrayLvl.length = 0;
       this.imageArrayLvl.length = 0;
@@ -54,7 +56,8 @@ export class Frame {
     this.inverseDepthLvl = Array(Constants.PYRAMID_LEVELS);
     this.inverseDepthVarianceLvl = Array(Constants.PYRAMID_LEVELS);
     this.posDataLvl = Array(Constants.PYRAMID_LEVELS);
-    this.colorAndVarDataLvl = Array(Constants.PYRAMID_LEVELS)
+    this.colorDataLvl = Array(Constants.PYRAMID_LEVELS);
+    this.varDataLvl = Array(Constants.PYRAMID_LEVELS)
     for (let i: number = 0; i < Constants.PYRAMID_LEVELS; i++) {
       const w = this.width(i)
       const h = this.height(i)
@@ -237,7 +240,8 @@ export class Frame {
       const cxInv: number = Constants.cxInv[level];
       const cyInv: number = Constants.cyInv[level];
       const posData = Array(width * height);
-      const colorAndVarData = Array(width * height);
+      const colorData = new Float32Array(width * height);
+      const varData = new Float32Array(width * height);
       for (let x: number = 1; x < width - 1; x++) {
         for (let y: number = 1; y < height - 1; y++) {
           const idx: number = x + y * width;
@@ -245,11 +249,13 @@ export class Frame {
           const vrb: number = inverseDepthVariance[idx];
           if (idepth == 0 || vrb <= 0) continue;
           posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
-          colorAndVarData[idx] = new Float32Array([image[idx], vrb]);
+          colorData[idx] = image[idx]
+          varData[idx] = vrb
         }
       }
       this.posDataLvl[level] = posData
-      this.colorAndVarDataLvl[level] = colorAndVarData
+      this.colorDataLvl[level] = colorData
+      this.varDataLvl[level] = varData
     }
   }
 }

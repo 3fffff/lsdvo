@@ -11,11 +11,9 @@ export class SIM3 {
     if (se3 != null && se3 instanceof SE3) {
       this.se3 = se3;
       this.scale = scale ?? 1;
-      this.assertNotNaN();
     } else {
       this.se3 = new SE3();
       this.scale = 1;
-      this.assertNotNaN();
     }
   }
 
@@ -48,7 +46,6 @@ export class SIM3 {
     newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMul2(sim3.getTranslationMat(), this.getScale()), 3));
     newSim3.se3.rotation.mulEq(sim3.getRotation());
     newSim3.scale *= sim3.getScale();
-    newSim3.assertNotNaN();
     return newSim3;
   }
 
@@ -60,7 +57,6 @@ export class SIM3 {
     );
     newSim3.se3.rotation.mulEq(sim3.getRotation());
     newSim3.scale *= sim3.getScale();
-    newSim3.assertNotNaN();
     return newSim3;
   }
 
@@ -81,7 +77,6 @@ export class SIM3 {
     inverse.se3.rotation = SO3.inverse(sim3.se3.rotation);
     inverse.scale = 1.0 / sim3.scale;
     inverse.se3.translation = Vec.scalarMul2((Vec.matVecMultiplySqr(inverse.getRotationMatrix(), sim3.se3.translation, 3)), -inverse.scale);
-    inverse.assertNotNaN();
     return inverse;
   }
 
@@ -128,7 +123,6 @@ export class SIM3 {
     se3.setTranslation(trans);
     se3.rotation = rotation;
     let result: SIM3 = new SIM3(se3, scale);
-    result.assertNotNaN();
     return result;
   }
 
@@ -162,11 +156,5 @@ export class SIM3 {
       coeff[2] = (coeff[0] - ((b - 1.0) * s + a * t) * inv_s_theta) / (t * t);
     }
     return coeff;
-  }
-
-  public assertNotNaN() {
-    if (isNaN(this.scale)) throw new Error("assert isNaN");
-    if (((value) => Number.NEGATIVE_INFINITY === value || Number.POSITIVE_INFINITY === value)(this.scale)) throw new Error("isInfinite");
-    this.se3.assertNotNaN();
   }
 }

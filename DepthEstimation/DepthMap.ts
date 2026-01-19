@@ -51,28 +51,23 @@ export class DepthMap {
 
     this.debugDepth = debug ? new TestDepth(this) : null
 
-    //this.activeKeyFrame = null;
     this.otherDepthMap = Array(this.width * this.height);
     this.currentDepthMap = Array(this.width * this.height);
 
     this.validityIntegralBuffer = new Float32Array(this.width * this.height);
 
-    this.fx = Constants.K[0][0 * 3 + 0];
-    this.fy = Constants.K[0][1 * 3 + 1];
-    this.cx = Constants.K[0][0 * 3 + 2];
-    this.cy = Constants.K[0][1 * 3 + 2];
-
-    this.fxi = Constants.KInv[0][0 * 3 + 0];
-    this.fyi = Constants.KInv[0][1 * 3 + 1];
-    this.cxi = Constants.KInv[0][0 * 3 + 2];
-    this.cyi = Constants.KInv[0][1 * 3 + 2];
+    this.fx = Constants.fx[0];
+    this.fy = Constants.fy[0];
+    this.cx = Constants.cx[0];
+    this.cy = Constants.cy[0];
+    this.fxi = Constants.fxInv[0];
+    this.fyi = Constants.fyInv[0];
+    this.cxi = Constants.cxInv[0];
+    this.cyi = Constants.cyInv[0];
 
     for (let i = 0; i < this.width * this.height; i++) {
-      if (this.otherDepthMap[i] == null)
-        this.otherDepthMap[i] = new DepthMapPixelHypothesis();
-      // Default hypothesis for all pixels
-      if (this.currentDepthMap[i] == null)
-        this.currentDepthMap[i] = new DepthMapPixelHypothesis();
+      this.otherDepthMap[i] = new DepthMapPixelHypothesis();
+      this.currentDepthMap[i] = new DepthMapPixelHypothesis();
     }
   }
 
@@ -235,7 +230,7 @@ export class DepthMap {
     // Get epipolar line??
     let epx: number, epy: number;
     // x, y pixel coordinate, refFrame
-    let epl: Float32Array | null = this.makeAndCheckEPL(x, y, refFrame);
+    let epl: Float32Array | null = this.makeAndCheckEPL(x, y);
 
     if (epl == null) {
       return false;
@@ -249,7 +244,7 @@ export class DepthMap {
     let result_eplLength: number = 0.0;
 
     // Do line stereo, get error, ^ results
-    let lineStereoResult: Float32Array = this.doLineStereo(x, y, epx, epy, 0.0, 1.0, 1.0 / Constants.MIN_DEPTH, refFrame,
+    let lineStereoResult = this.doLineStereo(x, y, epx, epy, 0.0, 1.0, 1.0 / Constants.MIN_DEPTH, refFrame,
       refFrame.imageArrayLvl[0], result_idepth, result_var, result_eplLength);
 
     let error: number = lineStereoResult[0];
@@ -273,7 +268,7 @@ export class DepthMap {
     // Get epipolar line
     let epx: number, epy: number;
     // x, y pixel coordinate, refFrame
-    let epl: Float32Array | null = this.makeAndCheckEPL(x, y, refFrame);
+    let epl: Float32Array | null = this.makeAndCheckEPL(x, y);
 
     if (epl == null) {
       return false;
@@ -297,7 +292,7 @@ export class DepthMap {
     let result_eplLength: number = 0.0;
 
     // Do stereo
-    let lineStereoResult: Float32Array = this.doLineStereo(x, y, epx, epy, min_idepth, target.idepth_smoothed, max_idepth,
+    let lineStereoResult = this.doLineStereo(x, y, epx, epy, min_idepth, target.idepth_smoothed, max_idepth,
       refFrame, refFrame.imageArrayLvl[0], result_idepth, result_var, result_eplLength);
 
     let error: number = lineStereoResult[0];
@@ -385,49 +380,23 @@ export class DepthMap {
  *
  * Return null if failed, return let[] {epx, epy} if found.
  */
-  makeAndCheckEPL(x: number, y: number, ref: Frame): Float32Array | null {
-    let idx: number = x + y * this.width;
+  makeAndCheckEPL(x: number, y: number): Float32Array | null {
+    const idx = x + y * this.width;
+    const epx = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
+    const epy = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
+    if (isNaN(epx + epy)) return null;
 
-    // ======= make epl ========
-    // calculate the plane spanned by the two camera centers and the point
-    // (x,y,1)
-    // intersect it with the keyframe's image plane (at depth=1)
-    let epx: number = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
-    let epy: number = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
+    const eplLengthSquared = epx * epx + epy * epy;
+    if (eplLengthSquared < Constants.MIN_EPL_LENGTH_SQUARED) return null;
 
-    if (isNaN(epx + epy)) {
-      return null;
-    }
+    const gx = this.activeKeyFrame!.imageArrayLvl[0][idx + 1] - this.activeKeyFrame!.imageArrayLvl[0][idx - 1];
+    const gy = this.activeKeyFrame!.imageArrayLvl[0][idx + this.width] - this.activeKeyFrame!.imageArrayLvl[0][idx - this.width];
+    const eplGradSquared = (gx * epx + gy * epy) ** 2 / eplLengthSquared;
+    if (eplGradSquared < Constants.MIN_EPL_GRAD_SQUARED ||
+      eplGradSquared / (gx * gx + gy * gy) < Constants.MIN_EPL_ANGLE_SQUARED) return null;
 
-    // ======== check epl length =========
-    let eplLengthSquared: number = (epx * epx + epy * epy);
-    if (eplLengthSquared < Constants.MIN_EPL_LENGTH_SQUARED) {
-      return null;
-    }
-
-    // ===== check epl-grad magnitude ======
-
-    let gx: number = this.activeKeyFrame.imageArrayLvl[0][idx + 1] - this.activeKeyFrame.imageArrayLvl[0][idx - 1];
-    let gy: number = this.activeKeyFrame.imageArrayLvl[0][idx + this.width] - this.activeKeyFrame.imageArrayLvl[0][idx - this.width];
-    let eplGradSquared: number = (gx * epx + gy * epy);
-    eplGradSquared = eplGradSquared * eplGradSquared / eplLengthSquared; // square and norm with epl-length
-
-    if (eplGradSquared < Constants.MIN_EPL_GRAD_SQUARED) {
-      return null;
-    }
-
-    // ===== check epl-grad angle ======
-    if (eplGradSquared / (gx * gx + gy * gy) < Constants.MIN_EPL_ANGLE_SQUARED) {
-      return null;
-    }
-
-    // ===== DONE - return "normalized" epl =====
-    let fac: number = (Constants.GRADIENT_SAMPLE_DIST / Math.sqrt(eplLengthSquared));
-
-    let pepx: number = (epx * fac);
-    let pepy: number = (epy * fac);
-
-    return new Float32Array([pepx, pepy]);
+    const fac = Constants.GRADIENT_SAMPLE_DIST / Math.sqrt(eplLengthSquared);
+    return new Float32Array([epx * fac, epy * fac]);
   }
 
   // find pixel in image (do stereo along epipolar line).
@@ -447,7 +416,7 @@ export class DepthMap {
    */
   doLineStereo(u: number, v: number, epxn: number, epyn: number, min_idepth: number, prior_idepth: number,
     max_idepth: number, referenceFrame: Frame, referenceFrameImage: Float32Array, result_idepth: number, result_var: number,
-    result_eplLength: number): Float32Array {
+    result_eplLength: number): Array<number> {
 
     // calculate epipolar line start and end point in old image
     let KinvP: Float32Array = new Float32Array([this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0]);
@@ -465,11 +434,11 @@ export class DepthMap {
     // calculation at the bottom
     if (firstX <= 0 || firstX >= this.width - 2 || firstY <= 0 || firstY >= this.height - 2 || lastX <= 0
       || lastX >= this.width - 2 || lastY <= 0 || lastY >= this.height - 2) {
-      return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
+      return [-1, result_idepth, result_var, result_eplLength];
     }
 
     if (!(rescaleFactor > 0.7 && rescaleFactor < 1.4)) {
-      return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
+      return [-1, result_idepth, result_var, result_eplLength];
     }
 
     let activeKeyFrameImageData: Float32Array = this.activeKeyFrame.imageArrayLvl[0];
@@ -500,14 +469,14 @@ export class DepthMap {
     // near-point,
     // we moved past the Point it and should stop.
     if (pFar[2] < 0.001 || max_idepth < min_idepth) {
-      return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
+      return [-1, result_idepth, result_var, result_eplLength];
     }
     pFar = Vec.vectorDiv(pFar, pFar[2]); // pos in new image of point (xy),
     // assuming min_idepth
 
     // check for nan due to eg division by zero.
     if (isNaN((pFar[0] + pClose[0]))) {
-      return new Float32Array([-4, result_idepth, result_var, result_eplLength]);
+      return [-4, result_idepth, result_var, result_eplLength];
     }
 
     // calculate increments in which we will step through the epipolar line.
@@ -516,7 +485,7 @@ export class DepthMap {
     let incy: number = (pClose[1] - pFar[1]);
     let eplLength: number = Math.sqrt(incx * incx + incy * incy);
     if (!(eplLength > 0) || !isFinite(eplLength)) {
-      return new Float32Array([-4, result_idepth, result_var, result_eplLength]);
+      return [-4, result_idepth, result_var, result_eplLength];
     }
 
     if (eplLength > Constants.MAX_EPL_LENGTH_CROP) {
@@ -547,7 +516,7 @@ export class DepthMap {
     if (pFar[0] <= Constants.SAMPLE_POINT_TO_BORDER || pFar[0] >= this.width - Constants.SAMPLE_POINT_TO_BORDER
       || pFar[1] <= Constants.SAMPLE_POINT_TO_BORDER
       || pFar[1] >= this.height - Constants.SAMPLE_POINT_TO_BORDER) {
-      return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
+      return [-1, result_idepth, result_var, result_eplLength];
     }
 
     // if near point is outside: move inside, and test length again.
@@ -587,7 +556,7 @@ export class DepthMap {
       if (pClose[0] <= Constants.SAMPLE_POINT_TO_BORDER || pClose[0] >= this.width - Constants.SAMPLE_POINT_TO_BORDER
         || pClose[1] <= Constants.SAMPLE_POINT_TO_BORDER
         || pClose[1] >= this.height - Constants.SAMPLE_POINT_TO_BORDER || newEplLength < 8.0) {
-        return new Float32Array([-1, result_idepth, result_var, result_eplLength]);
+        return [-1, result_idepth, result_var, result_eplLength];
       }
 
     }
@@ -736,13 +705,13 @@ export class DepthMap {
 
     // if error too big, will return -3, otherwise -2.
     if (best_match_err > 4.0 * Constants.MAX_ERROR_STEREO) {
-      return new Float32Array([-3, result_idepth, result_var, result_eplLength]);
+      return [-3, result_idepth, result_var, result_eplLength];
     }
 
     // check if clear enough winner
     if (Math.abs(loopCBest - loopCSecond) > 1.0
       && Constants.MIN_DISTANCE_ERROR_STEREO * best_match_err > second_best_match_err) {
-      return new Float32Array([-2, result_idepth, result_var, result_eplLength]);
+      return [-2, result_idepth, result_var, result_eplLength];
     }
 
     let didSubpixel: boolean = false;
@@ -819,7 +788,7 @@ export class DepthMap {
     // check if interpolated error is OK. use evil hack to allow more error
     // if there is a lot of gradient.
     if (best_match_err > Constants.MAX_ERROR_STEREO + Math.sqrt(gradAlongLine) * 20) {
-      return new Float32Array([-3, result_idepth, result_var, result_eplLength]);
+      return [-3, result_idepth, result_var, result_eplLength];
     }
 
     // ================= calc depth (in KF) ====================
@@ -861,7 +830,7 @@ export class DepthMap {
     let allowNegativeIdepths: boolean = true;
     if (idnew_best_match < 0) {
       if (!allowNegativeIdepths)
-        return new Float32Array([-2, result_idepth, result_var, result_eplLength]);
+        return [-2, result_idepth, result_var, result_eplLength];
     }
 
     // ================= calc var (in NEW image) ====================
@@ -896,41 +865,35 @@ export class DepthMap {
 
     this.debugDepth?.debugImageStereoLines(pClose[0], pClose[1], pFar[0], pFar[1])
 
-    return new Float32Array([best_match_err, result_idepth, result_var, result_eplLength]);
+    return [best_match_err, result_idepth, result_var, result_eplLength];
   }
 
   regularizeDepthMapFillHoles(): void {
     this.buildRegIntegralBuffer();
-    this.copyDepthMapArray();
+    this.otherDepthMap = this.currentDepthMap.map(x => new DepthMapPixelHypothesis(x));
     // TOOD: multithread
     this.regularizeDepthMapFillHolesRow(3, this.height - 2);
   }
   // Summed area table of number of valid DepthMapPixelHypothesis
   buildRegIntegralBuffer(): void {
+    const buf = this.validityIntegralBuffer;
+    const map = this.currentDepthMap;
+    const w = this.width, h = this.height;
 
-    // Sum horizontally
-    // TODO: run in parallel
-    this.buildRegIntegralBufferRow1(0, this.height);
+    // Horizontal pass
+    for (let y = 0; y < h; y++) {
+      let sum = 0;
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (map[idx].isValid) sum += map[idx].validity_counter;
+        buf[idx] = sum;
+      }
+    }
 
-    // Sum vertically
-    let wh: number = this.height * this.width;
-    for (let i = this.width; i < wh; i++)
-      this.validityIntegralBuffer[i] += this.validityIntegralBuffer[i - this.width];
-  }
-
-  buildRegIntegralBufferRow1(yMin: number, yMax: number): void {
-    for (let y = yMin; y < yMax; y++) {
-      let validityIntegralBufferSUM: number = 0;
-      for (let x = 0; x < this.width; x++) {
-        let idx: number = y * this.width + x;
-        let src: DepthMapPixelHypothesis = this.currentDepthMap[idx];
-
-        if (src.isValid)
-          validityIntegralBufferSUM += src.validity_counter;
-
-        // Sum/number of valid DepthMapPixelHypothesis in same row,
-        // before the pixel?
-        this.validityIntegralBuffer[idx] = validityIntegralBufferSUM;
+    // Vertical pass
+    for (let x = 0; x < w; x++) {
+      for (let y = 1; y < h; y++) {
+        buf[y * w + x] += buf[(y - 1) * w + x];
       }
     }
   }
@@ -989,18 +952,8 @@ export class DepthMap {
   }
 
   regularizeDepthMap(removeOcclusions: boolean, validityTH: number): void {
-    this.copyDepthMapArray();
+    this.otherDepthMap = this.currentDepthMap.map(x => new DepthMapPixelHypothesis(x));
     this.regularizeDepthMapRow(validityTH, 2, this.height - 2, removeOcclusions);
-  }
-
-  copyDepthMapArray(): void {
-    for (let i = 0; i < this.currentDepthMap.length; i++) {
-      if (this.currentDepthMap[i]) {
-        this.otherDepthMap[i] = new DepthMapPixelHypothesis(this.currentDepthMap[i]);
-      } else {
-        console.log("no currentDepthMap")
-      }
-    }
   }
 
   regularizeDepthMapRow(validityTH: number, yMin: number, yMax: number, removeOcclusions: boolean): void {

@@ -81,8 +81,9 @@ export class SE3Tracker {
     // For each pyramid level, coarse to fine
     for (let level = Constants.SE3TRACKING_MAX_LEVEL - 1; level >= Constants.SE3TRACKING_MIN_LEVEL; level -= 1) {
       const posData = referenceFrame.posDataLvl[level]
-      const colorAndVarData = referenceFrame.colorAndVarDataLvl[level]
-      this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, refToFrame, level);
+      const colorData = referenceFrame.colorDataLvl[level]
+      const varData = referenceFrame.varDataLvl[level]
+      this.#calculateResidualAndBuffers(posData, colorData,varData, frame, refToFrame, level);
 
       // Diverge when amount of pixels successfully warped into new frame < some
       // amount
@@ -115,7 +116,7 @@ export class SE3Tracker {
           newRefToFrame.mulEq(refToFrame);
 
           // Re-evaluate residual
-          this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, newRefToFrame, level);
+          this.#calculateResidualAndBuffers(posData, colorData,varData, frame, newRefToFrame, level);
 
           // Check for divergence
           if (this.warpedCount < Constants.MIN_GOODPERALL_PIXEL_ABSMIN * frame.width(level)
@@ -199,7 +200,7 @@ export class SE3Tracker {
    * @return sum of un-weighted residuals, divided by good pixel count.
    *
    */
-  #calculateResidualAndBuffers(posData: Array<Float32Array>, colorAndVarData: Array<Float32Array>, frame: Frame,
+  #calculateResidualAndBuffers(posData: Array<Float32Array>, colorData: Float32Array,varData:Float32Array, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
     this.calculateResidualAndBuffersCount++;
@@ -251,7 +252,7 @@ export class SE3Tracker {
       let interpolatedGradientY: number = Vec.interpolatedValue(frame.imageGradientYArrayLvl[level], u, v,
         frame.width(level));
 
-      let residual: number = colorAndVarData[i][0] - interpolatedIntensity;
+      let residual: number = colorData[i] - interpolatedIntensity;
       let squaredResidual: number = residual * residual;
 
       // Set buffers
@@ -264,7 +265,7 @@ export class SE3Tracker {
       this.bufWarpedY[this.warpedCount] = warpedPoint[1];
       this.bufWarpedZ[this.warpedCount] = warpedPoint[2];
       this.bufInvDepth[this.warpedCount] = (1.0 / point[2]);
-      this.bufInvDepthVariance[this.warpedCount] = colorAndVarData[i][1];
+      this.bufInvDepthVariance[this.warpedCount] = varData[i];
 
       // Increase warpCount
       this.warpedCount += 1;
