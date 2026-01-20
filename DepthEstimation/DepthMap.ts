@@ -96,8 +96,8 @@ export class DepthMap {
           // let idepth = 0.5f + 1.0f * 0.5f;
 
           // Set hypothesis, random idepth and initial variance.
-          this.currentDepthMap[x + y * this.width] = new DepthMapPixelHypothesis(idepth, idepth,
-            Constants.VAR_RANDOM_INIT_INITIAL, Constants.VAR_RANDOM_INIT_INITIAL, 20);
+          this.currentDepthMap[x + y * this.width].copyFromVal(idepth, Constants.VAR_RANDOM_INIT_INITIAL, 20, idepth,
+            Constants.VAR_RANDOM_INIT_INITIAL);
           goodGrad++;
         } else {
           // Mark as invalid
@@ -137,13 +137,7 @@ export class DepthMap {
         this.activeKeyFrame.id, frame.id, frame.kfID);
     }
 
-    let refToKf: SE3;
-    // Get SIM3 from frame to keyframe
-    if (this.activeKeyFrame.id === 0) {
-      refToKf = frame.thisToParent;
-    } else {
-      refToKf = this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
-    }
+    let refToKf: SE3 = this.activeKeyFrame.id === 0 ? frame.thisToParent : this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
 
     // prepare frame for stereo with keyframe, SE3, K, level
     //frame.prepareForStereoWith(refToKf);
@@ -257,7 +251,7 @@ export class DepthMap {
     }
 
     result_idepth = this.UNZERO(result_idepth);
-    this.currentDepthMap[idx] = new DepthMapPixelHypothesis(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
+    this.currentDepthMap[idx].copyFromVal(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
     return true;
   }
 
@@ -870,10 +864,16 @@ export class DepthMap {
 
   regularizeDepthMapFillHoles(): void {
     this.buildRegIntegralBuffer();
-    this.otherDepthMap = this.currentDepthMap.map(x => new DepthMapPixelHypothesis(x));
+    this.copyDepthMapToOther();
     // TOOD: multithread
     this.regularizeDepthMapFillHolesRow(3, this.height - 2);
   }
+
+  copyDepthMapToOther(): void {
+    for (let i = 0; i < this.currentDepthMap.length; i++)
+      this.otherDepthMap[i].copyFrom(this.currentDepthMap[i]);
+  }
+
   // Summed area table of number of valid DepthMapPixelHypothesis
   buildRegIntegralBuffer(): void {
     const buf = this.validityIntegralBuffer;
@@ -944,15 +944,14 @@ export class DepthMap {
           idepthObs = this.UNZERO(idepthObs);
 
           // Create new hypothesis
-          this.currentDepthMap[idx] = new DepthMapPixelHypothesis(idepthObs, DepthMap.VAR_RANDOM_INIT_INITIAL, 0);
-
+          this.currentDepthMap[idx].copyFromVal(idepthObs, DepthMap.VAR_RANDOM_INIT_INITIAL, 0);
         }
       }
     }
   }
 
   regularizeDepthMap(removeOcclusions: boolean, validityTH: number): void {
-    this.otherDepthMap = this.currentDepthMap.map(x => new DepthMapPixelHypothesis(x));
+    this.copyDepthMapToOther();
     this.regularizeDepthMapRow(validityTH, 2, this.height - 2, removeOcclusions);
   }
 
@@ -1170,7 +1169,7 @@ export class DepthMap {
 
         if (!targetBest.isValid) {
 
-          targetBest = new DepthMapPixelHypothesis(new_idepth, new_var, source.validity_counter);
+          targetBest.copyFromVal(new_idepth, new_var, source.validity_counter);
           this.otherDepthMap[newIDX] = targetBest;
         } else {
 
@@ -1184,17 +1183,17 @@ export class DepthMap {
             merged_validity = Math.floor(Constants.VALIDITY_COUNTER_MAX
               + (Constants.VALIDITY_COUNTER_MAX_VARIABLE));
 
-          targetBest = new DepthMapPixelHypothesis(merged_new_idepth,
+          targetBest.copyFromVal(merged_new_idepth,
             1.0 / (1.0 / targetBest.idepth_var + 1.0 / new_var), merged_validity);
 
           this.otherDepthMap[newIDX] = targetBest;
-
         }
       }
 
     // swap!
     let temp = this.currentDepthMap.map(h => new DepthMapPixelHypothesis(h));
-    this.currentDepthMap = this.otherDepthMap.map(h => new DepthMapPixelHypothesis(h));
+    for (let i = 0; i < this.otherDepthMap.length; i++)
+      this.currentDepthMap[i].copyFrom(this.otherDepthMap[i]);
     this.otherDepthMap = temp;
   }
   /*

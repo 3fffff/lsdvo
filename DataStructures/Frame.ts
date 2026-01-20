@@ -242,13 +242,13 @@ export class Frame {
       const posData = Array(width * height);
       const colorData = new Float32Array(width * height);
       const varData = new Float32Array(width * height);
-      for (let x: number = 1; x < width - 1; x++) {
-        for (let y: number = 1; y < height - 1; y++) {
+      for (let x: number = 0; x < width; x++) {
+        for (let y: number = 0; y < height; y++) {
           const idx: number = x + y * width;
           const idepth: number = inverseDepth[idx];
           const vrb: number = inverseDepthVariance[idx];
           if (idepth == 0 || vrb <= 0) continue;
-          posData[idx] = new Float32Array([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
+          posData[idx] = [(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth];
           colorData[idx] = image[idx]
           varData[idx] = vrb
         }

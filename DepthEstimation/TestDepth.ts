@@ -29,7 +29,7 @@ export class TestDepth {
     this.map = map
   }
 
-  debugPlotDepthMap(frame: Frame,reFrame:Frame): void {
+  debugPlotDepthMap(frame: Frame, reFrame: Frame): void {
     if (frame == null) return;
     if (!this.keyFrameCtx || !this.gradCtx || !this.imgStereoLinesCtx) return;
     let imgData: ImageData = this.imgStereoLinesCtx.createImageData(this.width, this.height);
@@ -55,7 +55,7 @@ export class TestDepth {
 
       if (!this.map.currentDepthMap[i].isValid) continue;
 
-      const color: Uint8Array = this.map.currentDepthMap[i].getVisualizationColor(3);
+      const color = this.map.currentDepthMap[i].getVisualizationColor(3);
       imgDataS.data[i * 4 + 0] = color[0]
       imgDataS.data[i * 4 + 1] = color[1]
       imgDataS.data[i * 4 + 2] = color[2]
