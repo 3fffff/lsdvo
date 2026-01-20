@@ -2,17 +2,17 @@ export class Vec {
   /**
    * Calculates magnitude of a vector.
    */
-  public static magnitude(vec: Float32Array): number {
+  public static magnitude(vec: Array<number>): number {
     let magnitude: number = 0;
     for (let i: number = 0; i < vec.length; i++) magnitude += vec[i] * vec[i];
     return Math.sqrt(magnitude);
   }
 
-  public static invert(a: Float32Array, len: number): Float32Array {
+  public static invert(a: Array<number>, len: number): Array<number> {
     let n: number = len;
-    let x: Float32Array = new Float32Array(n * n);
-    let b: Float32Array = new Float32Array(n * n);
-    let index: Float32Array = new Float32Array(n);
+    let x = new Array(n * n).fill(0);
+    let b = new Array(n * n).fill(0);
+    let index = new Array(n).fill(0);
     for (let i: number = 0; i < n; ++i) b[i * n + i] = 1;
     Vec.gaussian(a, index);
     for (let i: number = 0; i < n - 1; ++i)
@@ -31,9 +31,9 @@ export class Vec {
     return x;
   }
 
-  static gaussian(a: Float32Array, index: Float32Array) {
+  static gaussian(a: Array<number>, index: Array<number>) {
     let n: number = index.length;
-    let c: Float32Array = new Float32Array(n);
+    let c = new Array(n).fill(0);
     for (let i: number = 0; i < n; ++i) { index[i] = i; }
     for (let i: number = 0; i < n; ++i) {
       let c1: number = 0;
@@ -63,69 +63,68 @@ export class Vec {
         for (let l: number = j + 1; l < n; ++l)
           a[index[i] * n + l] -= pj * a[index[j] * n + l];
       }
-
     }
   }
 
-  public static dot(vec0: Float32Array, vec1: Float32Array): number {
+  public static dot(vec0: Array<number>, vec1: Array<number>): number {
     let dot: number = 0;
     for (let i: number = 0; i < vec0.length; i++)  dot += vec0[i] * vec1[i];
     return dot;
   }
 
-  static cross(a: Float32Array, b: Float32Array): Float32Array {
-    return new Float32Array([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]);
+  static cross(a: Array<number>, b: Array<number>): Array<number> {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   }
 
-  static scalarMult(vec0: Float32Array, s: number) {
+  static scalarMult(vec0: Array<number>, s: number) {
     for (let i: number = 0; i < vec0.length; i++)  vec0[i] *= s;
   }
 
-  public static scalarMul2(vec0: Float32Array, s: number): Float32Array {
-    let result: Float32Array = new Float32Array(vec0.length);
+  public static scalarMul2(vec0: Array<number>, s: number): Array<number> {
+    let result: Array<number> = new Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] * s;
     return result;
   }
 
-  public static vecAdd2(vec0: Float32Array, vec1: Float32Array): Float32Array {
-    let result: Float32Array = new Float32Array(vec0.length);
+  public static vecAdd2(vec0: Array<number>, vec1: Array<number>): Array<number> {
+    let result: Array<number> = new Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] + vec1[i];
     return result;
   }
 
-  static vecMinus(vec0: Float32Array, vec1: Float32Array) {
+  static vecMinus(vec0: Array<number>, vec1: Array<number>) {
     for (let i: number = 0; i < vec0.length; i++)  vec0[i] -= vec1[i];
   }
 
-  public static vecMinus2(vec0: Float32Array, vec1: Float32Array): Float32Array {
-    let result: Float32Array = new Float32Array(vec0.length);
+  public static vecMinus2(vec0: Array<number>, vec1: Array<number>): Array<number> {
+    let result: Array<number> = new Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] - vec1[i];
     return result;
   }
 
-  static unit(vec: Float32Array) {
+  static unit(vec: Array<number>) {
     Vec.scalarMult(vec, 1.0 / Vec.magnitude(vec));
   }
 
-  public static getCol(vec7: Float32Array, row: number, len: number): Float32Array {
-    let result: Float32Array = new Float32Array(len);
+  public static getCol(vec7: Array<number>, row: number, len: number): Array<number> {
+    let result: Array<number> = new Array<number>(len).fill(0);
     for (let i: number = 0; i < len; i++)  result[i] = vec7[i * len + row];
     return result;
   }
 
-  public static getRow(vec7: Float32Array, row: number, len: number): Float32Array {
-    let result: Float32Array = new Float32Array(len);
+  public static getRow(vec7: Array<number>, row: number, len: number): Array<number> {
+    let result: Array<number> = new Array<number>(len).fill(0);
     for (let i: number = 0; i < len; i++)  result[i] = vec7[row * len + i];
     return result;
   }
 
-  public static setRow(matrix: Float32Array, vec7: Float32Array, row: number) {
+  public static setRow(matrix: Array<number>, vec7: Array<number>, row: number) {
     for (let i: number = 0; i < vec7.length; i++)  matrix[row * vec7.length + i] = vec7[i];
   }
 
-  public static multMatrix(A: Float32Array, B: Float32Array, aRows: number, aColumns: number, bRows: number, bColumns: number): Float32Array {
+  public static multMatrix(A: Array<number>, B: Array<number>, aRows: number, aColumns: number, bRows: number, bColumns: number): Array<number> {
     if (aColumns !== bRows) throw new Error("A columns must match B rows");
-    let C: Float32Array = new Float32Array(aRows * bColumns);
+    let C: Array<number> = new Array<number>(aRows * bColumns).fill(0);
     for (let i = 0; i < aRows; i++) {
       for (let j = 0; j < bColumns; j++) {
         let sum = 0;
@@ -138,50 +137,50 @@ export class Vec {
     return C;
   }
 
-  static matrixTranspose(A: Float32Array, len: number): Float32Array {
-    let result: Float32Array = new Float32Array(len * len);
+  static matrixTranspose(A: Array<number>, len: number): Array<number> {
+    let result: Array<number> = new Array<number>(len * len).fill(0);
     for (let i: number = 0; i < len; i++)
       for (let j: number = 0; j < len; j++)
         result[j * len + i] = A[i * len + j];
     return result;
   }
 
-  static matrixEye(vol: number): Float32Array {
-    let result: Float32Array = new Float32Array(vol * vol);
+  static matrixEye(vol: number): Array<number> {
+    let result: Array<number> = new Array<number>(vol * vol).fill(0);
     for (let j: number = 0; j < vol; j++) result[j * vol + j] = 1;
     return result;
   }
 
-  public static matrixMul(A: Float32Array, s: number): Float32Array {
-    let result: Float32Array = new Float32Array(A.length);
+  public static matrixMul(A: Array<number>, s: number): Array<number> {
+    let result: Array<number> = new Array<number>(A.length).fill(0);
     for (let i: number = 0; i < A.length; i++)  result[i] = A[i] * s;
     return result;
   }
 
-  public static matrixAdd(A: Float32Array, B: Float32Array): void {
+  public static matrixAdd(A: Array<number>, B: Array<number>): void {
     for (let i: number = 0; i < A.length; i++)  A[i] = A[i] + B[i];
   }
-  public static matrixAdd2(A: Float32Array, B: Float32Array): Float32Array {
-    let result: Float32Array = new Float32Array(A.length);
+  public static matrixAdd2(A: Array<number>, B: Array<number>): Array<number> {
+    let result: Array<number> = new Array<number>(A.length).fill(0);
     for (let i: number = 0; i < A.length; i++)  result[i] = A[i] + B[i];
     return result;
   }
 
-  public static matrixDiv(A: Float32Array, s: number): void {
+  public static matrixDiv(A: Array<number>, s: number): void {
     for (let i: number = 0; i < A.length; i++)  A[i] = A[i] / s;
   }
-  public static vectorDiv0(vec0: Float32Array, s: number): void {
+  public static vectorDiv0(vec0: Array<number>, s: number): void {
     for (let i: number = 0; i < vec0.length; i++)  vec0[i] = vec0[i] / s;
   }
 
-  public static vectorDiv(vec0: Float32Array, s: number): Float32Array {
-    let result: Float32Array = new Float32Array(vec0.length);
+  public static vectorDiv(vec0: Array<number>, s: number): Array<number> {
+    let result: Array<number> = new Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] / s;
     return result;
   }
 
-  public static matVecMultiplySqr(matrix: Float32Array, vector: Float32Array, rows: number): Float32Array {
-    let result: Float32Array = new Float32Array(rows);
+  public static matVecMultiplySqr(matrix: Array<number>, vector: Array<number>, rows: number): Array<number> {
+    let result: Array<number> = new Array<number>(rows).fill(0);
     for (let row: number = 0; row < rows; row++) {
       let sum: number = 0;
       for (let column: number = 0; column < rows; column++)  sum += matrix[row * rows + column] * vector[column];
@@ -190,21 +189,21 @@ export class Vec {
     return result;
   }
 
-  public static vecTransMul(a: Float32Array, b: Float32Array): Float32Array {
-    let result: Float32Array = new Float32Array(a.length * b.length);
+  public static vecTransMul(a: Array<number>, b: Array<number>): Array<number> {
+    let result: Array<number> = new Array<number>(a.length * b.length).fill(0);
     for (let i: number = 0; i < a.length; i++)
       for (let j: number = 0; j < b.length; j++)
         result[a.length * i + j] = a[i] * b[j];
     return result;
   }
 
-  public static vecNeg(a: Float32Array): void {
+  public static vecNeg(a: Array<number>): void {
     for (let i: number = 0; i < a.length; i++) a[i] = a[i] * (-1);
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {
-    const ix: number = Math.floor(x);
-    const iy: number = Math.floor(y);
+    const ix: number = ~~x;
+    const iy: number = ~~y;
     const dx: number = x - ix;
     const dy: number = y - iy;
     const dxdy: number = dx * dy;
@@ -212,7 +211,7 @@ export class Vec {
     return dxdy * dataArray[bp + 1 + width] + (dy - dxdy) * dataArray[bp + width] + (dx - dxdy) * dataArray[bp + 1] + (1 - dx - dy + dxdy) * dataArray[bp];
   }
 
-  public static solveSystem(A: Float32Array, b: Float32Array): Float32Array {
+  public static solveSystem(A: Array<number>, b: Array<number>): Array<number> {
     let x = b.slice()
     for (let s = 1; s < b.length; s++) {
       for (let i = s; i < b.length; i++) {

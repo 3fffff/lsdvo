@@ -2,10 +2,10 @@ import { Vec } from "./Vec";
 
 export class SO3 {
   public static M_SQRT1_2: number = Math.sqrt(0.5);
-  public matrix: Float32Array;
+  public matrix: Array<number>;
 
   public constructor(mat33?: any) {
-    if (mat33 != null && mat33 instanceof Float32Array) {
+    if (mat33 != null && mat33 instanceof Array) {
       this.set33(mat33);
     } else if ((mat33 != null && mat33 instanceof SO3)) {
       let __args = arguments;
@@ -16,11 +16,11 @@ export class SO3 {
     }
   }
 
-  public set31(vec3: Float32Array) {
+  public set31(vec3: Array<number>) {
     this.set33(SO3.exp(vec3));
   }
 
-  public set33(mat33: Float32Array) {
+  public set33(mat33: Array<number>) {
     this.matrix = mat33;
     this.coerce();
   }
@@ -28,7 +28,7 @@ export class SO3 {
   /**
    * Performs exponential, returns SO3 matrix.
    */
-  public static exp(vec3: Float32Array): Float32Array {
+  public static exp(vec3: Array<number>): Array<number> {
     let one_6th: number = 1.0 / 6.0;
     let one_20th: number = 1.0 / 20.0;
     let theta_sq: number = Vec.dot(vec3, vec3);
@@ -48,18 +48,18 @@ export class SO3 {
         B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
       }
     }
-    let result: Float32Array = SO3.rodrigues_so3_exp(vec3, A, B);
+    let result: Array<number> = SO3.rodrigues_so3_exp(vec3, A, B);
     return result;
   }
 
   /**
    * Compute a rotation exponential using the Rodrigues Formula.
    */
-  public static rodrigues_so3_exp(w: Float32Array, A: number, B: number): Float32Array {
-    let R: Float32Array = new Float32Array(3 * 3);
-      let wx2: number = <number>w[0] * w[0];
-      let wy2: number = <number>w[1] * w[1];
-      let wz2: number = <number>w[2] * w[2];
+  public static rodrigues_so3_exp(w: Array<number>, A: number, B: number): Array<number> {
+    let R: Array<number> = new Array<number>(3 * 3).fill(0);
+      let wx2: number = w[0] * w[0];
+      let wy2: number = w[1] * w[1];
+      let wz2: number = w[2] * w[2];
       R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
       R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
       R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);
@@ -82,9 +82,9 @@ export class SO3 {
    * Take the logarithm of the matrix, generating the corresponding vector in the
    * Lie Algebra.
    */
-  public ln(): Float32Array {
+  public ln(): Array<number> {
     this.coerce();
-    let result: Float32Array = new Float32Array([0, 0, 0]);
+    let result: Array<number> = [0, 0, 0];
     let cos_angle: number = (this.matrix[0 * 3 + 0] + this.matrix[1 * 3 + 1] + this.matrix[2 * 3 + 2] - 1.0) * 0.5;
     result[0] = (this.matrix[2 * 3 + 1] - this.matrix[1 * 3 + 2]) / 2.0;
     result[1] = (this.matrix[0 * 3 + 2] - this.matrix[2 * 3 + 0]) / 2.0;
@@ -103,7 +103,7 @@ export class SO3 {
       let d0: number = this.matrix[0 * 3 + 0] - cos_angle;
       let d1: number = this.matrix[1 * 3 + 1] - cos_angle;
       let d2: number = this.matrix[2 * 3 + 2] - cos_angle;
-      let r2: Float32Array = new Float32Array([0, 0, 0]);
+      let r2: Array<number> = [0, 0, 0];
       if (d0 * d0 > d1 * d1 && d0 * d0 > d2 * d2) {
         r2[0] = d0;
         r2[1] = (this.matrix[1 * 3 + 0] + this.matrix[0 * 3 + 1]) / 2.0;
@@ -145,9 +145,9 @@ export class SO3 {
   }
 
   public coerce() {
-    let vec0: Float32Array = Vec.getRow(this.matrix, 0, 3);
-    let vec1: Float32Array = Vec.getRow(this.matrix, 1, 3);
-    let vec2: Float32Array = Vec.getRow(this.matrix, 2, 3);
+    let vec0: Array<number> = Vec.getRow(this.matrix, 0, 3);
+    let vec1: Array<number> = Vec.getRow(this.matrix, 1, 3);
+    let vec2: Array<number> = Vec.getRow(this.matrix, 2, 3);
     Vec.unit(vec0);
     Vec.vecMinus(vec1, Vec.cross(vec0, Vec.cross(vec0, vec1)));
     Vec.unit(vec1);

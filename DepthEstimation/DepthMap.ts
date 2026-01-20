@@ -30,19 +30,16 @@ export class DepthMap {
 
   activeKeyFrame: Frame;
 
-  //oldest_referenceFrame: Frame;
   referenceFrame: Frame;
-  //referenceFrameByID: Array<Frame>;
-  //referenceFrameByID_offset: number;
 
   // Camera matrix
   fx: number; fy: number; cx: number; cy: number;
   fxi: number; fyi: number; cxi: number; cyi: number;
-  K_otherToThis_R: Float32Array;
-  K_otherToThis_t: Float32Array;
-  otherToThis_t: Float32Array;
-  thisToOther_R: Float32Array;
-  thisToOther_t: Float32Array;
+  K_otherToThis_R: Array<number>;
+  K_otherToThis_t: Array<number>;
+  otherToThis_t: Array<number>;
+  thisToOther_R: Array<number>;
+  thisToOther_t: Array<number>;
   debugDepth: TestDepth | null;
 
   constructor(w: number, h: number, debug: boolean) {
@@ -118,18 +115,8 @@ export class DepthMap {
     this.isValid()
 
     // Get oldest/newest frames
-    //  this.oldest_referenceFrame = referenceFrames[referenceFrames.length - 1];
     this.referenceFrame = frame
 
-    // this.referenceFrameByID = [];
-    // this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
-
-    // For each frame
-    // console.log("Updating keyframe " + activeKeyFrame.id + " with " +
-    // frame.id + ".");
-
-    // Checks that tracking parent is valid
-    //		assert (frame.id != 0);
     if (frame.kfID != this.activeKeyFrame.id) {
       console.log(
         "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
@@ -138,10 +125,6 @@ export class DepthMap {
     }
 
     let refToKf: SE3 = this.activeKeyFrame.id === 0 ? frame.thisToParent : this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
-
-    // prepare frame for stereo with keyframe, SE3, K, level
-    //frame.prepareForStereoWith(refToKf);
-
     let otherToThis: SE3 = refToKf.inverse();
 
     this.K_otherToThis_R = Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3);
@@ -224,7 +207,7 @@ export class DepthMap {
     // Get epipolar line??
     let epx: number, epy: number;
     // x, y pixel coordinate, refFrame
-    let epl: Float32Array | null = this.makeAndCheckEPL(x, y);
+    let epl: Array<number> | null = this.makeAndCheckEPL(x, y, refFrame);
 
     if (epl == null) {
       return false;
@@ -262,7 +245,7 @@ export class DepthMap {
     // Get epipolar line
     let epx: number, epy: number;
     // x, y pixel coordinate, refFrame
-    let epl: Float32Array | null = this.makeAndCheckEPL(x, y);
+    let epl: Array<number> | null = this.makeAndCheckEPL(x, y, refFrame);
 
     if (epl == null) {
       return false;
@@ -374,7 +357,7 @@ export class DepthMap {
  *
  * Return null if failed, return let[] {epx, epy} if found.
  */
-  makeAndCheckEPL(x: number, y: number): Float32Array | null {
+  makeAndCheckEPL(x: number, y: number, refFrame: Frame): Array<number> | null {
     const idx = x + y * this.width;
     const epx = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
     const epy = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
@@ -383,14 +366,14 @@ export class DepthMap {
     const eplLengthSquared = epx * epx + epy * epy;
     if (eplLengthSquared < Constants.MIN_EPL_LENGTH_SQUARED) return null;
 
-    const gx = this.activeKeyFrame!.imageArrayLvl[0][idx + 1] - this.activeKeyFrame!.imageArrayLvl[0][idx - 1];
-    const gy = this.activeKeyFrame!.imageArrayLvl[0][idx + this.width] - this.activeKeyFrame!.imageArrayLvl[0][idx - this.width];
+    const gx = refFrame.imageArrayLvl[0][idx + 1] - refFrame.imageArrayLvl[0][idx - 1];
+    const gy = refFrame.imageArrayLvl[0][idx + this.width] - refFrame.imageArrayLvl[0][idx - this.width];
     const eplGradSquared = (gx * epx + gy * epy) ** 2 / eplLengthSquared;
     if (eplGradSquared < Constants.MIN_EPL_GRAD_SQUARED ||
       eplGradSquared / (gx * gx + gy * gy) < Constants.MIN_EPL_ANGLE_SQUARED) return null;
 
     const fac = Constants.GRADIENT_SAMPLE_DIST / Math.sqrt(eplLengthSquared);
-    return new Float32Array([epx * fac, epy * fac]);
+    return [epx * fac, epy * fac];
   }
 
   // find pixel in image (do stereo along epipolar line).
@@ -413,9 +396,9 @@ export class DepthMap {
     result_eplLength: number): Array<number> {
 
     // calculate epipolar line start and end point in old image
-    let KinvP: Float32Array = new Float32Array([this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0]);
-    let pInf: Float32Array = Vec.matVecMultiplySqr(this.K_otherToThis_R, KinvP, 3);
-    let pReal: Float32Array = Vec.vecAdd2(Vec.vectorDiv(pInf, prior_idepth), this.K_otherToThis_t);
+    let KinvP = [this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0];
+    let pInf = Vec.matVecMultiplySqr(this.K_otherToThis_R, KinvP, 3);
+    let pReal = Vec.vecAdd2(Vec.vectorDiv(pInf, prior_idepth), this.K_otherToThis_t);
 
     let rescaleFactor: number = (pReal[2] * prior_idepth);
 
@@ -448,7 +431,7 @@ export class DepthMap {
     let realVal_p2: number = Vec.interpolatedValue(activeKeyFrameImageData, u + 2 * epxn * rescaleFactor,
       v + 2 * epyn * rescaleFactor, this.width);
 
-    let pClose: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, max_idepth));
+    let pClose = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, max_idepth));
     // if the assumed close-point lies behind the
     // image, have to change that.
     if (pClose[2] < 0.001) {
@@ -458,7 +441,7 @@ export class DepthMap {
     pClose = Vec.vectorDiv(pClose, pClose[2]); // pos in new image of point
     // (xy), assuming max_idepth
 
-    let pFar: Float32Array = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, min_idepth));
+    let pFar = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, min_idepth));
     // if the assumed far-point lies behind the image or closter than the
     // near-point,
     // we moved past the Point it and should stop.
@@ -1096,8 +1079,8 @@ export class DepthMap {
 
     // re-usable values.
     let oldToNew_SE3: SE3 = SE3.inverse(new_keyframe.thisToParent);
-    let trafoInv_t: Float32Array = oldToNew_SE3.getTranslation();
-    let trafoInv_R: Float32Array = oldToNew_SE3.getRotationMatrix();
+    let trafoInv_t = oldToNew_SE3.getTranslation();
+    let trafoInv_R = oldToNew_SE3.getRotationMatrix();
 
     //let trackingWasGood: boolean[] | null = new_keyframe.kfID == this.activeKeyFrame.id ? new_keyframe._refPixelWasGood : null;
 
@@ -1113,9 +1096,9 @@ export class DepthMap {
         if (!source.isValid)
           continue;
 
-        let r: Float32Array = new Float32Array([x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0]);
+        let r = [x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0];
 
-        let pn: Float32Array = Vec.vecAdd2(Vec.vectorDiv(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
+        let pn = Vec.vecAdd2(Vec.vectorDiv(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
           trafoInv_t);
 
         let new_idepth: number = (1.0 / pn[2]);

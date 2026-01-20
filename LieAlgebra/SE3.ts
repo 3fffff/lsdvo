@@ -4,15 +4,15 @@ import { Vec } from "./Vec";
 export class SE3 {
   public rotation: SO3;
 
-  public translation: Float32Array;
+  public translation: Array<number>;
 
   public constructor(rotation?: any, translation?: any) {
     if (rotation != null && rotation instanceof SO3) {
       this.rotation = rotation;
-      this.translation = translation ?? new Float32Array([0, 0, 0]);
+      this.translation = translation ?? [0, 0, 0];
     } else {
       this.rotation = new SO3();
-      this.setTranslation(new Float32Array([0, 0, 0]));
+      this.setTranslation([0, 0, 0]);
     }
   }
 
@@ -20,11 +20,11 @@ export class SE3 {
     return this.rotation;
   }
 
-  public getRotationMatrix(): Float32Array {
+  public getRotationMatrix(): Array<number> {
     return this.rotation.matrix;
   }
 
-  public getTranslation(): Float32Array {
+  public getTranslation(): Array<number> {
     return this.translation;
   }
 
@@ -35,17 +35,17 @@ export class SE3 {
    * @return
    * @return {SE3}
    */
-  public static exp(vec6: Float32Array): SE3 {
+  public static exp(vec6: Array<number>): SE3 {
     let one_6th: number = 1.0 / 6.0;
     let one_20th: number = 1.0 / 20.0;
     let result: SE3 = new SE3();
-    let t: Float32Array = new Float32Array([vec6[0], vec6[1], vec6[2]]);
-    let w: Float32Array = new Float32Array([vec6[3], vec6[4], vec6[5]]);
+    let t: Array<number> = [vec6[0], vec6[1], vec6[2]];
+    let w: Array<number> = [vec6[3], vec6[4], vec6[5]];
     let theta_sq: number = Vec.dot(w, w);
     let theta: number = Math.sqrt(theta_sq);
     let A: number;
     let B: number;
-    let cross: Float32Array = Vec.cross(w, t);
+    let cross: Array<number> = Vec.cross(w, t);
     if (theta_sq < 1.0E-12) {
       A = 1.0 - one_6th * theta_sq;
       B = 0.5;
@@ -68,15 +68,15 @@ export class SE3 {
     return result;
   }
 
-  public static ln(se3: SE3): Float32Array {
-    let rot: Float32Array = se3.getRotation().ln();
+  public static ln(se3: SE3): Array<number> {
+    let rot: Array<number> = se3.getRotation().ln();
     let theta: number = Math.sqrt(Vec.dot(rot, rot));
     let shtot: number = 0.5;
     if (theta > 1.0E-12) {
       shtot = Math.sin(theta / 2.0) / theta;
     }
     let halfrotator: SO3 = new SO3(SO3.exp(Vec.scalarMul2(rot, -0.5)));
-    let rottrans: Float32Array = Vec.matVecMultiplySqr(halfrotator.matrix, se3.getTranslation(), 3);
+    let rottrans: Array<number> = Vec.matVecMultiplySqr(halfrotator.matrix, se3.getTranslation(), 3);
 
     if (theta > 1.0E-12) {
       let correction = Vec.scalarMul2(
@@ -90,7 +90,7 @@ export class SE3 {
     }
 
     rottrans = Vec.scalarMul2(rottrans, 1.0 / (2.0 * shtot));
-    return new Float32Array([rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]]);
+    return [rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]];
   }
 
   public static inverse(se3: SE3): SE3 {
@@ -104,8 +104,8 @@ export class SE3 {
     return SE3.inverse(this);
   }
 
-  public setTranslation(vec3: Float32Array) {
-    let translationVec3: Float32Array = new Float32Array([vec3[0], vec3[1], vec3[2]]);
+  public setTranslation(vec3: Array<number>) {
+    let translationVec3: Array<number> = [vec3[0], vec3[1], vec3[2]];
     this.translation = translationVec3;
   }
   /**
@@ -123,12 +123,12 @@ export class SE3 {
    * @return {SE3}
    */
   public mulSE3(se3: SE3): SE3 {
-    let translation: Float32Array = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
-    let rotation: Float32Array = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
+    let translation: Array<number> = Vec.vecAdd2(this.translation, Vec.matVecMultiplySqr(this.rotation.matrix, se3.translation, 3));
+    let rotation: Array<number> = Vec.multMatrix(this.rotation.matrix, se3.rotation.matrix, 3, 3, 3, 3);
     return new SE3(new SO3(rotation), translation);
   }
 
-  public mulFloat(point: Float32Array): Float32Array {
+  public mulFloat(point: Array<number>): Array<number> {
     return Vec.vecAdd2(this.getTranslation(), Vec.matVecMultiplySqr(this.getRotationMatrix(), point, 3));
   }
 }

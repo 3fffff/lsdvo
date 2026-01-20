@@ -68,7 +68,7 @@ export class LSDVO {
     // Keyframe selection
     if (!this.createNewKeyFrame && this.currentKeyFrame.numMappedOnThis > Constants.MIN_NUM_MAPPED) {
 
-      let dist: Float32Array = Vec.scalarMul2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
+      let dist = Vec.scalarMul2(newRefToFrame_poseUpdate.getTranslation(), this.currentKeyFrame.meanIdepth);
       let minVal: number = Math.min(0.2 + this.numkeyframes * 0.8 / Constants.INITIALIZATION_PHASE_COUNT, 1.0);
       if (this.numkeyframes < Constants.INITIALIZATION_PHASE_COUNT)
         minVal *= 0.7;
