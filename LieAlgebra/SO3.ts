@@ -36,17 +36,12 @@ export class SO3 {
     let A: number;
     let B: number;
     if (theta_sq < 1.0E-12) {
-      A = 1.0 - one_6th * theta_sq;
-      B = 0.5;
+      B = 0.5 - 0.25 * one_6th * theta_sq;
+      A = 1.0 - theta_sq * one_6th * (1.0 - one_20th * theta_sq);
     } else {
-      if (theta_sq < 1.0E-12) {
-        B = 0.5 - 0.25 * one_6th * theta_sq;
-        A = 1.0 - theta_sq * one_6th * (1.0 - one_20th * theta_sq);
-      } else {
-        let inv_theta: number = 1.0 / theta;
-        A = Math.sin(theta) * inv_theta;
-        B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
-      }
+      let inv_theta: number = 1.0 / theta;
+      A = Math.sin(theta) * inv_theta;
+      B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
     }
     let result: Array<number> = SO3.rodrigues_so3_exp(vec3, A, B);
     return result;
@@ -57,24 +52,24 @@ export class SO3 {
    */
   public static rodrigues_so3_exp(w: Array<number>, A: number, B: number): Array<number> {
     let R: Array<number> = new Array<number>(3 * 3).fill(0);
-      let wx2: number = w[0] * w[0];
-      let wy2: number = w[1] * w[1];
-      let wz2: number = w[2] * w[2];
-      R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
-      R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
-      R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);
-      let a2: number = A * w[2];
-      let b01: number = B * (w[0] * w[1]);
-      R[0 * 3 + 1] = b01 - a2;
-      R[1 * 3 + 0] = b01 + a2;
-      let a1: number = A * w[1];
-      let b02: number = B * (w[0] * w[2]);
-      R[0 * 3 + 2] = b02 + a1;
-      R[2 * 3 + 0] = b02 - a1;
-      let a0: number = A * w[0];
-      let b12: number = B * (w[1] * w[2]);
-      R[1 * 3 + 2] = b12 - a0;
-      R[2 * 3 + 1] = b12 + a0;
+    let wx2: number = w[0] * w[0];
+    let wy2: number = w[1] * w[1];
+    let wz2: number = w[2] * w[2];
+    R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
+    R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
+    R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);
+    let a2: number = A * w[2];
+    let b01: number = B * (w[0] * w[1]);
+    R[0 * 3 + 1] = b01 - a2;
+    R[1 * 3 + 0] = b01 + a2;
+    let a1: number = A * w[1];
+    let b02: number = B * (w[0] * w[2]);
+    R[0 * 3 + 2] = b02 + a1;
+    R[2 * 3 + 0] = b02 - a1;
+    let a0: number = A * w[0];
+    let b12: number = B * (w[1] * w[2]);
+    R[1 * 3 + 2] = b12 - a0;
+    R[2 * 3 + 1] = b12 + a0;
     return R;
   }
 
@@ -154,7 +149,9 @@ export class SO3 {
     Vec.vecMinus(vec2, Vec.cross(vec0, Vec.cross(vec0, vec2)));
     Vec.vecMinus(vec2, Vec.cross(vec1, Vec.cross(vec1, vec2)));
     Vec.unit(vec2);
-    if (!((Vec.dot(Vec.cross(vec0, vec1), vec2) > 0))) throw new Error("(Vec.dot(Vec.cross(vec0, vec1), vec2) > 0);");
+    const handedness = Vec.dot(Vec.cross(vec0, vec1), vec2);
+    if (handedness <= 0)
+      vec2 = Vec.scalarMul2(vec2, -1); // flip to enforce right-handed
     Vec.setRow(this.matrix, vec0, 0);
     Vec.setRow(this.matrix, vec1, 1);
     Vec.setRow(this.matrix, vec2, 2);

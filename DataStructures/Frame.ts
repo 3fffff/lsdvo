@@ -67,40 +67,34 @@ export class Frame {
 
   gradientMax(imageGradientXArrayLvl: Float32Array, imageGradientYArrayLvl: Float32Array, level: number, w: number, h: number): Float32Array {
     let gradientMax: Float32Array = new Float32Array(w * h);
-    let gradientMaxTemp: Float32Array = new Float32Array(w * h);
-    for (let i: number = w; i < w * (h - 1); i++) {
-      let dx: number = imageGradientXArrayLvl[i];
-      let dy: number = imageGradientYArrayLvl[i];
+    for (let i = w; i < w * (h - 1); i++) {
+      let dx = imageGradientXArrayLvl[i];
+      let dy = imageGradientYArrayLvl[i];
       gradientMax[i] = Math.sqrt(dx * dx + dy * dy);
     }
-    for (let i: number = w + 1; i < w * (h - 1) - 1; i++) {
-      let g1: number = gradientMax[i - w];
-      let g2: number = gradientMax[i];
-      if (g1 < g2) g1 = g2;
-      let g3: number = gradientMax[i + w];
-      if (g1 < g3) gradientMaxTemp[i] = g3;
-      else gradientMaxTemp[i] = g1;
-    }
-    for (let i: number = w + 1; i < w * (h - 1) - 1; i++) {
-      let g1: number = gradientMaxTemp[i - 1];
-      let g2: number = gradientMaxTemp[i];
-      if (g1 < g2) {
-        g1 = g2;
-        if (g2 >= Constants.MIN_ABS_GRAD_CREATE && level == 0) this.numMappablePixels++;
+
+    let gradientMaxTemp = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        let idx = x + y * w;
+        let maxVal = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            maxVal = Math.max(maxVal, gradientMax[idx + dx + dy * w]);
+          }
+        }
+        gradientMaxTemp[idx] = maxVal;
+        if (level === 0 && maxVal >= Constants.MIN_ABS_GRAD_CREATE) {
+          this.numMappablePixels++;
+        }
       }
-      let g3: number = gradientMaxTemp[i + 1];
-      if (g1 < g3) {
-        gradientMax[i] = g3;
-        if (g3 >= Constants.MIN_ABS_GRAD_CREATE && level == 0) this.numMappablePixels++;
-      }
-      else gradientMax[i] = g1;
     }
-    return gradientMax;
+    return gradientMaxTemp;
   }
 
   gradientX(imageArrayLvl: Float32Array, w: number, h: number): Float32Array {
     const imageGradientXArray: Float32Array = new Float32Array(imageArrayLvl.length);
-    for (let i: number = w; i <= w * (h - 1); i++)
+    for (let i: number = w; i < w * (h - 1); i++)
       imageGradientXArray[i] = 0.5 * (imageArrayLvl[i + 1] - imageArrayLvl[i - 1]);
     return imageGradientXArray;
   }

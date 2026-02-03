@@ -4,18 +4,23 @@ import { DepthMap } from "./DepthMap";
 
 export class TestDepth {
   stereoTest: HTMLCanvasElement = document.createElement("canvas");
-  stereoTestCtx: CanvasRenderingContext2D | null = this.stereoTest.getContext("2d")
+  stereoTestCtx: CanvasRenderingContext2D | null = this.stereoTest.getContext("2d");
+
   stereoTestReference: HTMLCanvasElement = document.createElement("canvas");
-  stereoTestReferenceCtx: CanvasRenderingContext2D | null = this.stereoTest.getContext("2d")
+  stereoTestReferenceCtx: CanvasRenderingContext2D | null = this.stereoTestReference.getContext("2d");
+
   keyFrame: HTMLCanvasElement = document.createElement("canvas");
-  keyFrameCtx: CanvasRenderingContext2D | null = this.keyFrame.getContext("2d")
+  keyFrameCtx: CanvasRenderingContext2D | null = this.keyFrame.getContext("2d");
+
   grad: HTMLCanvasElement = document.createElement("canvas");
-  gradCtx: CanvasRenderingContext2D | null = this.grad.getContext("2d")
-  imgStereoLines: HTMLCanvasElement = document.createElement("canvas")
-  imgStereoLinesCtx: CanvasRenderingContext2D | null = this.imgStereoLines.getContext("2d")
-  width: number
-  height: number
-  map: DepthMap
+  gradCtx: CanvasRenderingContext2D | null = this.grad.getContext("2d");
+
+  imgStereoLines: HTMLCanvasElement = document.createElement("canvas");
+  imgStereoLinesCtx: CanvasRenderingContext2D | null = this.imgStereoLines.getContext("2d");
+
+  width: number;
+  height: number;
+  map: DepthMap;
 
   constructor(map: DepthMap) {
     this.width = this.keyFrame.width = this.grad.width = this.imgStereoLines.width = map.width;

@@ -7,8 +7,8 @@ export class SE3Tracker {
   // Settings variables
   static maxItsPerLvl = [5, 20, 50, 100, 100];
   static stepSizeMin = [1e-8, 1e-8, 1e-8, 1e-8, 1e-8];
-  lambdaInitial: Float32Array;
-  convergenceEps: Float32Array;
+  lambdaInitial = [0, 0, 0, 0, 0];
+  convergenceEps = [0.999, 0.999, 0.999, 0.999, 0.999];
   varWeight: number = 1.0;
   huberD: number = 3.0;
   cameraPixelNoise2: number = 4 * 4;
@@ -43,12 +43,6 @@ export class SE3Tracker {
   calculateResidualAndBuffersCount: number = 0;
 
   constructor(width: number, height: number) {
-    // Set lambdaInitial values to 0
-    this.lambdaInitial = new Float32Array(Constants.PYRAMID_LEVELS);
-    // Set convergence epsilon
-    this.convergenceEps = new Float32Array(Constants.PYRAMID_LEVELS);
-    for (let i: number = 0; i < this.convergenceEps.length; i++)
-      this.convergenceEps[i] = 0.999
     // Create buffer arrays
     let size: number = width * height;
     this.bufWarpedResidual = new Float32Array(size);

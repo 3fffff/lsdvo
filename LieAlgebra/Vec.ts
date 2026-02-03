@@ -10,9 +10,9 @@ export class Vec {
 
   public static invert(a: Array<number>, len: number): Array<number> {
     let n: number = len;
-    let x = new Array(n * n).fill(0);
-    let b = new Array(n * n).fill(0);
-    let index = new Array(n).fill(0);
+    let x = Array(n * n).fill(0);
+    let b = Array(n * n).fill(0);
+    let index = Array(n).fill(0);
     for (let i: number = 0; i < n; ++i) b[i * n + i] = 1;
     Vec.gaussian(a, index);
     for (let i: number = 0; i < n - 1; ++i)
@@ -33,7 +33,7 @@ export class Vec {
 
   static gaussian(a: Array<number>, index: Array<number>) {
     let n: number = index.length;
-    let c = new Array(n).fill(0);
+    let c = Array(n).fill(0);
     for (let i: number = 0; i < n; ++i) { index[i] = i; }
     for (let i: number = 0; i < n; ++i) {
       let c1: number = 0;
@@ -106,9 +106,9 @@ export class Vec {
     Vec.scalarMult(vec, 1.0 / Vec.magnitude(vec));
   }
 
-  public static getCol(vec7: Array<number>, row: number, len: number): Array<number> {
+  public static getCol(vec7: Array<number>, col: number, len: number): Array<number> {
     let result: Array<number> = new Array<number>(len).fill(0);
-    for (let i: number = 0; i < len; i++)  result[i] = vec7[i * len + row];
+    for (let i: number = 0; i < len; i++)  result[i] = vec7[i * len + col];
     return result;
   }
 
@@ -202,31 +202,49 @@ export class Vec {
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {
-    const ix: number = ~~x;
-    const iy: number = ~~y;
-    const dx: number = x - ix;
-    const dy: number = y - iy;
-    const dxdy: number = dx * dy;
-    const bp: number = ix + iy * width;
-    return dxdy * dataArray[bp + 1 + width] + (dy - dxdy) * dataArray[bp + width] + (dx - dxdy) * dataArray[bp + 1] + (1 - dx - dy + dxdy) * dataArray[bp];
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    // 🔧 Clamp to valid bilinear neighborhood
+    const max_x = width - 2;
+    const max_y = (dataArray.length / width) - 2;
+    const clamped_ix = Math.max(0, Math.min(ix, max_x));
+    const clamped_iy = Math.max(0, Math.min(iy, max_y));
+
+    const dx = x - clamped_ix;
+    const dy = y - clamped_iy;
+    const dxdy = dx * dy;
+    const bp = clamped_ix + clamped_iy * width;
+
+    return dxdy * dataArray[bp + 1 + width]
+      + (dy - dxdy) * dataArray[bp + width]
+      + (dx - dxdy) * dataArray[bp + 1]
+      + (1 - dx - dy + dxdy) * dataArray[bp];
   }
 
   public static solveSystem(A: Array<number>, b: Array<number>): Array<number> {
-    let x = b.slice()
-    for (let s = 1; s < b.length; s++) {
-      for (let i = s; i < b.length; i++) {
-        let a0 = A[i * b.length + s - 1] / A[(s - 1) * b.length + s - 1]
-        x[i] = x[i] - a0 * x[s - 1]
-        for (let j = s - 1; j < b.length; j++)
-          A[i * b.length + j] -= (a0) * A[(s - 1) * b.length + j]
+    const n = b.length;
+    if (A.length !== n * n) throw new Error("Matrix size mismatch");
+    const A_copy = A.slice();
+    const b_copy = b.slice();
+    const index = new Array(n).fill(0);
+    Vec.gaussian(A_copy, index); // uses partial pivoting
+
+    // Forward substitution
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const factor = A_copy[index[j] * n + i] / A_copy[index[i] * n + i];
+        b_copy[index[j]] -= factor * b_copy[index[i]];
       }
     }
-    x[b.length - 1] = x[b.length - 1] / A[(A.length - 1)]
-    for (let i = b.length - 2; i >= 0; i--) {
-      let buf = 0
-      for (let j = b.length - 1; j > i; j--)
-        buf += A[i * b.length + j] * x[j]
-      x[i] = (x[i] - buf) / A[i * b.length + i]
+
+    // Back substitution
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) {
+      let sum = b_copy[index[i]];
+      for (let j = i + 1; j < n; j++) {
+        sum -= A_copy[index[i] * n + j] * x[j];
+      }
+      x[i] = sum / A_copy[index[i] * n + i];
     }
     return x;
   }

@@ -46,24 +46,18 @@ export class SE3 {
     let A: number;
     let B: number;
     let cross: Array<number> = Vec.cross(w, t);
+    let C: number;
     if (theta_sq < 1.0E-12) {
-      A = 1.0 - one_6th * theta_sq;
-      B = 0.5;
-      result.setTranslation(Vec.vecAdd2(t, Vec.scalarMul2(cross, 0.5)));
+      C = one_6th * (1.0 - one_20th * theta_sq);
+      A = 1.0 - theta_sq * C;
+      B = 0.5 - 0.25 * one_6th * theta_sq;
     } else {
-      let C: number;
-      if (theta_sq < 1.0E-12) {
-        C = one_6th * (1.0 - one_20th * theta_sq);
-        A = 1.0 - theta_sq * C;
-        B = 0.5 - 0.25 * one_6th * theta_sq;
-      } else {
-        let inv_theta: number = 1.0 / theta;
-        A = Math.sin(theta) * inv_theta;
-        B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
-        C = (1.0 - A) * (inv_theta * inv_theta);
-      }
-      result.setTranslation(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMul2(cross, B)), Vec.scalarMul2(Vec.cross(w, cross), C)));
+      let inv_theta: number = 1.0 / theta;
+      A = Math.sin(theta) * inv_theta;
+      B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
+      C = (1.0 - A) * (inv_theta * inv_theta);
     }
+    result.setTranslation(Vec.vecAdd2(Vec.vecAdd2(t, Vec.scalarMul2(cross, B)), Vec.scalarMul2(Vec.cross(w, cross), C)));
     result.rotation.matrix = SO3.rodrigues_so3_exp(w, A, B);
     return result;
   }
