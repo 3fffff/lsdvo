@@ -7,7 +7,7 @@ export class SE3Tracker {
   // Settings variables
   static maxItsPerLvl = [5, 20, 50, 100, 100];
   static stepSizeMin = [1e-8, 1e-8, 1e-8, 1e-8, 1e-8];
-  lambdaInitial = [0, 0, 0, 0, 0];
+  lambdaInitial = [0.01, 0.01, 0.01, 0.01, 0.01];
   convergenceEps = [0.999, 0.999, 0.999, 0.999, 0.999];
   varWeight: number = 1.0;
   huberD: number = 3.0;

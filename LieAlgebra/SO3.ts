@@ -8,9 +8,9 @@ export class SO3 {
     if (mat33 != null && mat33 instanceof Array) {
       this.set33(mat33);
     } else if ((mat33 != null && mat33 instanceof SO3)) {
-      let __args = arguments;
-      let rotation: any = __args[0];
-      this.matrix = rotation.matrix;
+      let args = arguments;
+      let rotation: any = args[0];
+      this.matrix = rotation.matrix.slice();
     } else {
       this.matrix = Vec.matrixEye(3);
     }

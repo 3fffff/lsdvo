@@ -9,7 +9,7 @@ export class SE3 {
   public constructor(rotation?: any, translation?: any) {
     if (rotation != null && rotation instanceof SO3) {
       this.rotation = rotation;
-      this.translation = translation ?? [0, 0, 0];
+      this.translation = translation.slice() ?? [0, 0, 0];
     } else {
       this.rotation = new SO3();
       this.setTranslation([0, 0, 0]);
@@ -39,8 +39,8 @@ export class SE3 {
     let one_6th: number = 1.0 / 6.0;
     let one_20th: number = 1.0 / 20.0;
     let result: SE3 = new SE3();
-    let t: Array<number> = [vec6[0], vec6[1], vec6[2]];
-    let w: Array<number> = [vec6[3], vec6[4], vec6[5]];
+    let t: Array<number> = [vec6[0], vec6[1], vec6[2]];  // ← translation first!
+    let w: Array<number> = [vec6[3], vec6[4], vec6[5]];  // ← rotation second!
     let theta_sq: number = Vec.dot(w, w);
     let theta: number = Math.sqrt(theta_sq);
     let A: number;
@@ -84,7 +84,7 @@ export class SE3 {
     }
 
     rottrans = Vec.scalarMul2(rottrans, 1.0 / (2.0 * shtot));
-    return [rottrans[0], rottrans[1], rottrans[2], rot[0], rot[1], rot[2]];
+    return [rot[0], rot[1], rot[2], rottrans[0], rottrans[1], rottrans[2]];
   }
 
   public static inverse(se3: SE3): SE3 {

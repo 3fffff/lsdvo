@@ -5,7 +5,7 @@ import { Vec } from "./Vec";
 export class SIM3 {
   public se3: SE3;
 
-  public scale: number = 0;
+  public scale: number = 1;
 
   public constructor(se3?: any, scale?: any) {
     if (se3 != null && se3 instanceof SE3) {
@@ -41,14 +41,6 @@ export class SIM3 {
     return this.se3.getRotationMatrix();
   }
 
-  public SIM3(sim3: SIM3): SIM3 {
-    let newSim3: SIM3 = new SIM3(this);
-    newSim3.se3.translation = Vec.vecAdd2(newSim3.se3.translation, Vec.matVecMultiplySqr(this.getRotationMatrix(), Vec.scalarMul2(sim3.getTranslationMat(), this.getScale()), 3));
-    newSim3.se3.rotation.mulEq(sim3.getRotation());
-    newSim3.scale *= sim3.getScale();
-    return newSim3;
-  }
-
   public multiply(sim3: SIM3): SIM3 {
     let newSim3: SIM3 = new SIM3(this);
     newSim3.se3.translation = Vec.vecAdd2(
@@ -63,9 +55,11 @@ export class SIM3 {
   public mul(sim3?: any): any {
     if (sim3 instanceof SIM3) {
       return this.multiply(sim3);
-    } else if (sim3 instanceof Array) {
-      return this.mulFloat(sim3);
-    } else throw new Error('invalid overload');
+    } else if (Array.isArray(sim3) && sim3.length === 3) {
+      return this.mulFloat(sim3 as Array<number>);
+    } else {
+      throw new Error(`SIM3.mul: invalid argument type ${typeof sim3}`);
+    }
   }
 
   public mulFloat(point: Array<number>): Array<number> {

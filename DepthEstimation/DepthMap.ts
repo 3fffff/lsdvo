@@ -5,6 +5,13 @@ import { Vec } from "../LieAlgebra/Vec";
 import { SE3 } from "../LieAlgebra/SE3";
 import { TestDepth } from "./TestDepth";
 
+enum StereoError {
+  Success = 0,
+  OutOfBounds = -1,
+  NoClearWinner = -2,
+  ErrorTooHigh = -3,
+  NaNResult = -4
+}
 /**
  * Keeps a detailed depth map (consisting of DepthMapPixelHypothesis) and does
  * stereo comparisons and regularization to update it.
@@ -169,7 +176,7 @@ export class DepthMap {
     // For each row assigned
     for (let y = yMin; y < yMax; y++) {
       // For x 3 to width-3
-      for (let x = 3; x < this.width - 3; x++) {
+      for (let x = 3; x < this.width - 2; x++) {
         // For each pixel
 
         let idx: number = x + y * this.width;
@@ -229,7 +236,7 @@ export class DepthMap {
     result_var = lineStereoResult[2];
     result_eplLength = lineStereoResult[3];
 
-    if (error < 0 || result_var > Constants.MAX_VAR) {
+    if (error < 0 || result_var > Constants.MAX_VAR || result_idepth <= 0) {
       return false;
     }
 
@@ -325,9 +332,7 @@ export class DepthMap {
 
       // variance can only decrease from observation; never increase.
       id_var = id_var * w;
-      if (id_var < target.idepth_var) {
-        target.idepth_var = id_var;
-      }
+      target.idepth_var = id_var;
 
       // increase validity!
       target.validity_counter += Constants.VALIDITY_COUNTER_INC;
@@ -357,20 +362,30 @@ export class DepthMap {
  *
  * Return null if failed, return let[] {epx, epy} if found.
  */
-  makeAndCheckEPL(x: number, y: number, refFrame: Frame): Array<number> | null {
+  private makeAndCheckEPL(x: number, y: number, refFrame: Frame): [number, number] | null {
     const idx = x + y * this.width;
+
     const epx = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
     const epy = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
+
     if (isNaN(epx + epy)) return null;
 
     const eplLengthSquared = epx * epx + epy * epy;
     if (eplLengthSquared < Constants.MIN_EPL_LENGTH_SQUARED) return null;
 
-    const gx = refFrame.imageArrayLvl[0][idx + 1] - refFrame.imageArrayLvl[0][idx - 1];
-    const gy = refFrame.imageArrayLvl[0][idx + this.width] - refFrame.imageArrayLvl[0][idx - this.width];
+    // Gradient at pixel
+    const gx = refFrame.imageGradientXArrayLvl[0][idx + 1] -
+      refFrame.imageGradientXArrayLvl[0][idx - 1];
+    const gy = refFrame.imageGradientYArrayLvl[0][idx + this.width] -
+      refFrame.imageGradientYArrayLvl[0][idx - this.width];
+
     const eplGradSquared = (gx * epx + gy * epy) ** 2 / eplLengthSquared;
+    const absGradSquared = gx * gx + gy * gy;
+
     if (eplGradSquared < Constants.MIN_EPL_GRAD_SQUARED ||
-      eplGradSquared / (gx * gx + gy * gy) < Constants.MIN_EPL_ANGLE_SQUARED) return null;
+      eplGradSquared / absGradSquared < Constants.MIN_EPL_ANGLE_SQUARED) {
+      return null;
+    }
 
     const fac = Constants.GRADIENT_SAMPLE_DIST / Math.sqrt(eplLengthSquared);
     return [epx * fac, epy * fac];
@@ -411,11 +426,11 @@ export class DepthMap {
     // calculation at the bottom
     if (firstX <= 0 || firstX >= this.width - 2 || firstY <= 0 || firstY >= this.height - 2 || lastX <= 0
       || lastX >= this.width - 2 || lastY <= 0 || lastY >= this.height - 2) {
-      return [-1, result_idepth, result_var, result_eplLength];
+      return [StereoError.OutOfBounds, result_idepth, result_var, result_eplLength];
     }
 
     if (!(rescaleFactor > 0.7 && rescaleFactor < 1.4)) {
-      return [-1, result_idepth, result_var, result_eplLength];
+      return [StereoError.OutOfBounds, result_idepth, result_var, result_eplLength];
     }
 
     let activeKeyFrameImageData: Float32Array = this.activeKeyFrame.imageArrayLvl[0];
@@ -446,14 +461,14 @@ export class DepthMap {
     // near-point,
     // we moved past the Point it and should stop.
     if (pFar[2] < 0.001 || max_idepth < min_idepth) {
-      return [-1, result_idepth, result_var, result_eplLength];
+      return [StereoError.OutOfBounds, result_idepth, result_var, result_eplLength];
     }
     pFar = Vec.vectorDiv(pFar, pFar[2]); // pos in new image of point (xy),
     // assuming min_idepth
 
     // check for nan due to eg division by zero.
     if (isNaN((pFar[0] + pClose[0]))) {
-      return [-4, result_idepth, result_var, result_eplLength];
+      return [StereoError.NaNResult, result_idepth, result_var, result_eplLength];
     }
 
     // calculate increments in which we will step through the epipolar line.
@@ -462,7 +477,7 @@ export class DepthMap {
     let incy: number = (pClose[1] - pFar[1]);
     let eplLength: number = Math.sqrt(incx * incx + incy * incy);
     if (!(eplLength > 0) || !isFinite(eplLength)) {
-      return [-4, result_idepth, result_var, result_eplLength];
+      return [StereoError.NaNResult, result_idepth, result_var, result_eplLength];
     }
 
     if (eplLength > Constants.MAX_EPL_LENGTH_CROP) {
@@ -533,7 +548,7 @@ export class DepthMap {
       if (pClose[0] <= Constants.SAMPLE_POINT_TO_BORDER || pClose[0] >= this.width - Constants.SAMPLE_POINT_TO_BORDER
         || pClose[1] <= Constants.SAMPLE_POINT_TO_BORDER
         || pClose[1] >= this.height - Constants.SAMPLE_POINT_TO_BORDER || newEplLength < 8.0) {
-        return [-1, result_idepth, result_var, result_eplLength];
+        return [StereoError.OutOfBounds, result_idepth, result_var, result_eplLength];
       }
 
     }
@@ -682,68 +697,22 @@ export class DepthMap {
 
     // if error too big, will return -3, otherwise -2.
     if (best_match_err > 4.0 * Constants.MAX_ERROR_STEREO) {
-      return [-3, result_idepth, result_var, result_eplLength];
+      return [StereoError.ErrorTooHigh, result_idepth, result_var, result_eplLength];
     }
 
     // check if clear enough winner
     if (Math.abs(loopCBest - loopCSecond) > 1.0
       && Constants.MIN_DISTANCE_ERROR_STEREO * best_match_err > second_best_match_err) {
-      return [-2, result_idepth, result_var, result_eplLength];
+      return [StereoError.NoClearWinner, result_idepth, result_var, result_eplLength];
     }
 
     let didSubpixel: boolean = false;
     if (Constants.useSubpixelStereo) {
       // ================== compute exact match =========================
       // compute gradients (they are actually only half the real gradient)
-      let gradPre_pre: number = -(best_match_errPre - best_match_DiffErrPre);
-      let gradPre_this: number = (best_match_err - best_match_DiffErrPre);
-      let gradPost_this: number = -(best_match_err - best_match_DiffErrPost);
-      let gradPost_post: number = (best_match_errPost - best_match_DiffErrPost);
-
-      // final decisions here.
-      let interpPost: boolean = false;
-      let interpPre: boolean = false;
-
-      // if one is oob: return false.
-      if (best_match_errPre < 0 || best_match_errPost < 0) {
-      }
-      // - if zero-crossing occurs exactly in between (gradient
-      // Inconsistent),
-      else if ((gradPost_this < 0) !== (gradPre_this < 0)) {
-      }
-
-      // if pre has zero-crossing
-      else if ((gradPre_pre < 0) !== (gradPre_this < 0)) {
-        // if post has zero-crossing
-        if ((gradPost_post < 0) !== (gradPost_this < 0)) {
-        } else
-          interpPre = true;
-      }
-
-      // if post has zero-crossing
-      else if ((gradPost_post < 0) !== (gradPost_this < 0)) {
-        interpPost = true;
-      }
-      // DO interpolation!
-      // minimum occurs at zero-crossing of gradient, which is a straight
-      // line => easy to compute.
-      // the error at that point is also computed by just integrating.
-      if (interpPre) {
-        let d: number = gradPre_this / (gradPre_this - gradPre_pre);
-        best_match_x -= d * incx;
-        best_match_y -= d * incy;
-        best_match_err = best_match_err - 2 * d * gradPre_this - (gradPre_pre - gradPre_this) * d * d;
-        // if(enablePrintDebugInfo) stats->num_stereo_interpPre++;
-        didSubpixel = true;
-
-      } else if (interpPost) {
-        let d: number = gradPost_this / (gradPost_this - gradPost_post);
-        best_match_x += d * incx;
-        best_match_y += d * incy;
-        best_match_err = best_match_err + 2 * d * gradPost_this + (gradPost_post - gradPost_this) * d * d;
-        // if(enablePrintDebugInfo) stats->num_stereo_interpPost++;
-        didSubpixel = true;
-      }
+      this.subPixelInterpolation(best_match_errPre, best_match_DiffErrPre, best_match_err,
+        best_match_DiffErrPost, best_match_errPost,
+        best_match_x, best_match_y, incx, incy);
     }
 
     // sampleDist is the distance in pixel at which the realVal's were
@@ -765,7 +734,7 @@ export class DepthMap {
     // check if interpolated error is OK. use evil hack to allow more error
     // if there is a lot of gradient.
     if (best_match_err > Constants.MAX_ERROR_STEREO + Math.sqrt(gradAlongLine) * 20) {
-      return [-3, result_idepth, result_var, result_eplLength];
+      return [StereoError.ErrorTooHigh, result_idepth, result_var, result_eplLength];
     }
 
     // ================= calc depth (in KF) ====================
@@ -783,6 +752,9 @@ export class DepthMap {
 
       let dot0: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 0, 3));
       let dot2: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 2, 3));
+
+      if (Math.abs(nominator) < Constants.DIVISION_EPS)
+        return [-2, result_idepth, result_var, result_eplLength];  // Invalid
 
       idnew_best_match = (dot0 - oldX * dot2) / nominator;
       alpha = (incx * this.fxi
@@ -805,10 +777,8 @@ export class DepthMap {
     }
 
     let allowNegativeIdepths: boolean = true;
-    if (idnew_best_match < 0) {
-      if (!allowNegativeIdepths)
-        return [-2, result_idepth, result_var, result_eplLength];
-    }
+    if (idnew_best_match < 0 && !allowNegativeIdepths)
+      return [StereoError.NoClearWinner, result_idepth, result_var, result_eplLength];
 
     // ================= calc var (in NEW image) ====================
 
@@ -835,6 +805,8 @@ export class DepthMap {
       * ((didSubpixel ? 0.05 : 0.5) * sampleDist * sampleDist + geoDispError + photoDispError); // square to
     // make
     // variance
+    if (result_var <= 0 || result_var > Constants.MAX_VAR)
+      return [StereoError.NoClearWinner, result_idepth, Constants.MAX_VAR, result_eplLength];
 
     result_idepth = idnew_best_match;
 
@@ -1097,9 +1069,10 @@ export class DepthMap {
           continue;
 
         let r = [x * this.fxi + this.cxi, y * this.fyi + this.cyi, 1.0];
-
-        let pn = Vec.vecAdd2(Vec.vectorDiv(Vec.matVecMultiplySqr(trafoInv_R, r, 3), source.idepth_smoothed),
-          trafoInv_t);
+        let depth = 1.0 / source.idepth_smoothed;  // Convert inverse depth to depth
+        let rotated = Vec.matVecMultiplySqr(trafoInv_R, r, 3);
+        let scaled = Vec.scalarMul2(rotated, depth);  // Scale by depth
+        let pn = Vec.vecAdd2(scaled, trafoInv_t);     // Add translation
 
         let new_idepth: number = (1.0 / pn[2]);
 
@@ -1178,6 +1151,45 @@ export class DepthMap {
     for (let i = 0; i < this.otherDepthMap.length; i++)
       this.currentDepthMap[i].copyFrom(this.otherDepthMap[i]);
     this.otherDepthMap = temp;
+  }
+
+  private subPixelInterpolation(
+    bestMatchErrPre: number, bestMatchDiffErrPre: number,
+    bestMatchErr: number, bestMatchDiffErrPost: number,
+    bestMatchErrPost: number,
+    bestMatchX: number, bestMatchY: number,
+    incX: number, incY: number
+  ): [number, number, number] {
+    const gradPrePre = -(bestMatchErrPre - bestMatchDiffErrPre);
+    const gradPreThis = (bestMatchErr - bestMatchDiffErrPre);
+    const gradPostThis = -(bestMatchErr - bestMatchDiffErrPost);
+    const gradPostPost = (bestMatchErrPost - bestMatchDiffErrPost);
+
+    let interpPre = false;
+    let interpPost = false;
+
+    // Check for zero-crossing in gradient
+    if ((gradPrePre < 0) !== (gradPreThis < 0)) {
+      if (!((gradPostPost < 0) !== (gradPostThis < 0))) {
+        interpPre = true;
+      }
+    } else if ((gradPostPost < 0) !== (gradPostThis < 0)) {
+      interpPost = true;
+    }
+
+    if (interpPre) {
+      const d = gradPreThis / (gradPreThis - gradPrePre);
+      bestMatchX -= d * incX;
+      bestMatchY -= d * incY;
+      bestMatchErr = bestMatchErr - 2 * d * gradPreThis - (gradPrePre - gradPreThis) * d * d;
+    } else if (interpPost) {
+      const d = gradPostThis / (gradPostThis - gradPostPost);
+      bestMatchX += d * incX;
+      bestMatchY += d * incY;
+      bestMatchErr = bestMatchErr + 2 * d * gradPostThis + (gradPostPost - gradPostThis) * d * d;
+    }
+
+    return [bestMatchX, bestMatchY, bestMatchErr];
   }
   /*
    * Make val non-zero
