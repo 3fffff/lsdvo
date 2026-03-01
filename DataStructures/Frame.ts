@@ -15,7 +15,7 @@ export class Frame {
   public inverseDepthVarianceLvl: Array<Float32Array>;
   public posDataLvl: Array<Array<Array<number>>>;
   public colorAndVarData: Array<Array<Array<number>>>;
-  public IDepthBeenSet: boolean = false;
+  public IDepthSet: boolean = false;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
   public numFramesTrackedOnThis: number = 0;
@@ -136,7 +136,7 @@ export class Frame {
     }
     this.meanIdepth = numIdepth > 0 ? sumIdepth / numIdepth : 0;
     this.numPoints = numIdepth;
-    this.IDepthBeenSet = true;
+    this.IDepthSet = true;
     for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
       this.#buildIDepthAndIDepthVar(level);
 

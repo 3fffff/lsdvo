@@ -14,7 +14,11 @@ export class Constants {
   static MIN_USE_GRAD: number = 5;
   public static MIN_ABS_GRAD_CREATE: number = Constants.MIN_USE_GRAD;
   public static MIN_ABS_GRAD_DECREASE: number = Constants.MIN_USE_GRAD;
-
+    /** ============== Depth Variance Handling ======================= */
+  static SUCC_VAR_INC_FAC: number = (1.01); // before an
+  // ekf-update, the variance is increased by this factor.
+  static FAIL_VAR_INC_FAC: number = 1.1; // after a failed stereo observation, the
+  // variance is increased by this factor.
   /**
    * ============== constants for validity handling =======================
    */

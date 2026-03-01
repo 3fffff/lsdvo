@@ -5,8 +5,8 @@
   "main": "LSDVO.js",
   "browser": ".\\dist\\lsdvo.min.js",
   "scripts": {
-    "devbuild":"tsc && .\\node_modules\\.bin\\esbuild .\\dist\\index.js --bundle --outfile=dist\\debug.js --global-name=LSD --minify --sourcemap",
-    "build":"tsc && .\\node_modules\\.bin\\esbuild index.js --bundle --outfile=dist\\bundle.js --global-name=LSD --minify"
+    "devbuild": "tsc && .\\node_modules\\.bin\\esbuild .\\dist\\index.js --bundle --outfile=dist\\debug.js --global-name=LSD --minify --sourcemap",
+    "build": "tsc && .\\node_modules\\.bin\\esbuild index.js --bundle --outfile=dist\\bundle.js --global-name=LSD --minify"
   },
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
   "author": "3fffff",
   "license": "",
   "devDependencies": {
-    "esbuild": "0.20.2"
+    "esbuild": "^0.27.3"
   },
   "dependencies": {
     "typescript": "^5.4.2"
