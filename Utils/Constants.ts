@@ -118,16 +118,16 @@ export class Constants {
     const posData: Array<number>[] = [];
     const scaledTH: number = Constants.scaledDepthVarTH;
     const absTH: number = Constants.absDepthVarTH;
-    for (let i = 0; i < keyframe.posDataLvl[level].length; i++) {
+    for (let i = 0; i < keyframe.pointCloudLvl[level].length; i++) {
       // Get idepth, variance
-      const idepth: number = keyframe.colorAndVarData[level][i][0];
-      const var1: number = keyframe.colorAndVarData[level][i][1];
+      const idepth: number = keyframe.pointCloudLvl[level][i][3];
+      const var1: number = keyframe.pointCloudLvl[level][i][4];
       const depth: number = 1 / idepth;
       let depth4: number = depth * depth * depth * depth;
       // Skip if depth/variance is not valid
       if (var1 * depth4 > scaledTH || var1 * depth4 > absTH)
         continue;
-      posData.push(keyframe.camToWorld.mulFloat(keyframe.posDataLvl[level][i]));
+      posData.push(keyframe.camToWorld.mulFloat(keyframe.pointCloudLvl[level][i]));
     }
     return posData
   }

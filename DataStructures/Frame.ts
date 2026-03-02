@@ -3,18 +3,15 @@ import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothe
 import { SE3 } from '../LieAlgebra/SE3';
 
 export class Frame {
-  _width: number = 0;
-  _height: number = 0;
+  #width: number = 0;
+  #height: number = 0;
   id: number = 0;
   public isKF: boolean = false;
   public imageArrayLvl: Array<Float32Array>;
   public imageGradientXArrayLvl: Array<Float32Array>;
   public imageGradientYArrayLvl: Array<Float32Array>;
   public imageGradientMaxArrayLvl: Array<Float32Array>;
-  public inverseDepthLvl: Array<Float32Array>;
-  public inverseDepthVarianceLvl: Array<Float32Array>;
-  public posDataLvl: Array<Array<Array<number>>>;
-  public colorAndVarData: Array<Array<Array<number>>>;
+  public pointCloudLvl: Array<Array<[number, number, number, number, number]>>;
   public IDepthSet: boolean = false;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
@@ -33,10 +30,7 @@ export class Frame {
   public clearData() {
     this.imageGradientXArrayLvl.length = 0;
     this.imageGradientYArrayLvl.length = 0;
-    this.inverseDepthVarianceLvl.length = 0;
-    this.inverseDepthLvl.length = 0;
-    this.posDataLvl.length = 0;
-    this.colorAndVarData.length = 0
+    this.pointCloudLvl.length = 0;
     if (!this.isKF) {
       this.imageGradientMaxArrayLvl.length = 0;
       this.imageArrayLvl.length = 0;
@@ -44,17 +38,14 @@ export class Frame {
   }
 
   public constructor(image: Float32Array, width: number, height: number, id: number) {
-    this._width = width;
-    this._height = height;
+    this.#width = width;
+    this.#height = height;
     this.id = id;
     this.imageArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientXArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientYArrayLvl = Array(Constants.PYRAMID_LEVELS);
     this.imageGradientMaxArrayLvl = Array(Constants.PYRAMID_LEVELS);
-    this.inverseDepthLvl = Array(Constants.PYRAMID_LEVELS);
-    this.inverseDepthVarianceLvl = Array(Constants.PYRAMID_LEVELS);
-    this.posDataLvl = Array(Constants.PYRAMID_LEVELS);
-    this.colorAndVarData = Array(Constants.PYRAMID_LEVELS);
+    this.pointCloudLvl = Array(Constants.PYRAMID_LEVELS);
     for (let i: number = 0; i < Constants.PYRAMID_LEVELS; i++) {
       const w = this.width(i)
       const h = this.height(i)
@@ -78,15 +69,12 @@ export class Frame {
       for (let x = 1; x < w - 1; x++) {
         let idx = x + y * w;
         let maxVal = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++)
             maxVal = Math.max(maxVal, gradientMax[idx + dx + dy * w]);
-          }
-        }
         gradientMaxTemp[idx] = maxVal;
-        if (level === 0 && maxVal >= Constants.MIN_ABS_GRAD_CREATE) {
+        if (level === 0 && maxVal >= Constants.MIN_ABS_GRAD_CREATE)
           this.numMappablePixels++;
-        }
       }
     }
     return gradientMaxTemp;
@@ -107,96 +95,109 @@ export class Frame {
   }
 
   public width(level: number): number {
-    return this._width >> level;
+    return this.#width >> level;
   }
 
   public height(level: number): number {
-    return this._height >> level;
+    return this.#height >> level;
   }
 
   public setDepth(newDepth: Array<DepthMapPixelHypothesis>): void {
-    let numIdepth: number = 0;
-    let sumIdepth: number = 0;
 
-    let pixels: number = this.width(0) * this.height(0);
-    if (!this.inverseDepthLvl[0])
-      this.inverseDepthLvl[0] = new Float32Array(pixels);
-    if (!this.inverseDepthVarianceLvl[0])
-      this.inverseDepthVarianceLvl[0] = new Float32Array(pixels);
-    for (let i = 0; i < pixels; i++) {
-      if (newDepth[i].isValid && newDepth[i].idepth_smoothed >= -0.05) {
-        this.inverseDepthLvl[0][i] = newDepth[i].idepth_smoothed;
-        this.inverseDepthVarianceLvl[0][i] = newDepth[i].idepth_var_smoothed;
-        numIdepth++;
-        sumIdepth += newDepth[i].idepth_smoothed;
-      } else {
-        this.inverseDepthLvl[0][i] = -1;
-        this.inverseDepthVarianceLvl[0][i] = -1;
+    let idepthSrc: Float32Array | undefined;
+    let ivarSrc: Float32Array | undefined;
+    let srcW = 0;
+
+    for (let lvl = 0; lvl < Constants.PYRAMID_LEVELS; lvl++) {
+      const width = this.width(lvl);
+      const height = this.height(lvl);
+      const pixels = width * height;
+      const imageLvl = this.imageArrayLvl[lvl];
+
+      const idepthDst = new Float32Array(pixels);
+      const ivarDst = new Float32Array(pixels);
+      const posData: Array<[number, number, number, number, number]> = [];
+
+      let levelNumPoints = 0;
+      let levelSumIdepth = 0;
+
+      for (let y = 0; y < height; y++) {
+        const cyTerm = Constants.fyInv[lvl] * y + Constants.cyInv[lvl];
+        const dstRow = y * width;
+
+        for (let x = 0; x < width; x++) {
+          const dstIdx = x + dstRow;
+          let idepth = -1, ivar = -1;
+
+          if (lvl === 0) {
+            // Level 0: extract from DepthMapPixelHypothesis[]
+            const h = newDepth[dstIdx];
+            if (h.isValid && h.idepth_smoothed > 0) {
+              idepth = h.idepth_smoothed;
+              ivar = h.idepth_var_smoothed;
+            }
+          } else {
+            // Levels 1+: variance-weighted 2x2 pooling from previous level
+            const xSrc = x << 1, ySrc = y << 1;
+            const srcRow = ySrc * srcW;
+            const baseIdx = xSrc + srcRow;
+
+            let sumW = 0, sumWI = 0, count = 0;
+
+            // Unrolled 2x2 neighborhood for performance
+            let v = ivarSrc![baseIdx];
+            if (v > 0) { const w = 1 / v; sumW += w; sumWI += w * idepthSrc![baseIdx]; count++; }
+            v = ivarSrc![baseIdx + 1];
+            if (v > 0) { const w = 1 / v; sumW += w; sumWI += w * idepthSrc![baseIdx + 1]; count++; }
+            v = ivarSrc![baseIdx + srcW];
+            if (v > 0) { const w = 1 / v; sumW += w; sumWI += w * idepthSrc![baseIdx + srcW]; count++; }
+            v = ivarSrc![baseIdx + srcW + 1];
+            if (v > 0) { const w = 1 / v; sumW += w; sumWI += w * idepthSrc![baseIdx + srcW + 1]; count++; }
+
+            if (count > 0) {
+              ivar = count / sumW;        // fused variance
+              idepth = sumWI / sumW;      // weighted average inverse depth
+            }
+          }
+
+          if (idepth > 0 && ivar > 0) {
+            idepthDst[dstIdx] = idepth;
+            ivarDst[dstIdx] = ivar;
+
+            // Accumulate stats for level 0 only (used for class-level meanIdepth/numPoints)
+            if (lvl === 0) {
+              levelNumPoints++;
+              levelSumIdepth += idepth;
+            }
+
+            const depth = 1.0 / idepth;
+            posData.push([
+              (Constants.fxInv[lvl] * x + Constants.cxInv[lvl]) * depth,
+              cyTerm * depth,
+              depth,
+              imageLvl[dstIdx],
+              ivar
+            ]);
+          } else {
+            idepthDst[dstIdx] = -1;
+            ivarDst[dstIdx] = -1;
+          }
+        }
       }
-    }
-    this.meanIdepth = numIdepth > 0 ? sumIdepth / numIdepth : 0;
-    this.numPoints = numIdepth;
-    this.IDepthSet = true;
-    for (let level = 1; level < Constants.PYRAMID_LEVELS; level++)
-      this.#buildIDepthAndIDepthVar(level);
 
-    this.#createPointCloud()
-  }
+      this.pointCloudLvl[lvl] = posData;
 
-  #buildIDepthAndIDepthVar(level: number) {
-    if (level <= 0) {
-      console.error("Invalid level parameter!");
-      return;
-    }
-    let width: number = this.width(level);
-    let height: number = this.height(level);
-    let sw: number = this.width(level - 1);
-    this.inverseDepthLvl[level] = new Float32Array(width * height);
-    this.inverseDepthVarianceLvl[level] = new Float32Array(width * height);
-    let idepthSource: Float32Array = this.inverseDepthLvl[level - 1];
-    let idepthVarSource: Float32Array = this.inverseDepthVarianceLvl[level - 1];
-    let idepthDest: Float32Array = this.inverseDepthLvl[level];
-    let idepthVarDest: Float32Array = this.inverseDepthVarianceLvl[level];
-    for (let y: number = 0; y < height; y++) {
-      for (let x: number = 0; x < width; x++) {
-        let idx: number = 2 * (x + y * sw);
-        let idxDest: number = (x + y * width);
-        let idepthSumsSum: number = 0;
-        let ivarSumsSum: number = 0;
-        let num: number = 0;
-        if (idepthVarSource[idx] > 0) {
-          let ivar = 1.0 / idepthVarSource[idx];
-          ivarSumsSum += ivar;
-          idepthSumsSum += ivar * idepthSource[idx];
-          num++;
-        }
-        if (idepthVarSource[idx + 1] > 0) {
-          let ivar = 1.0 / idepthVarSource[idx + 1];
-          ivarSumsSum += ivar;
-          idepthSumsSum += ivar * idepthSource[idx + 1];
-          num++;
-        }
-        if (idepthVarSource[idx + sw] > 0) {
-          let ivar = 1.0 / idepthVarSource[idx + sw];
-          ivarSumsSum += ivar;
-          idepthSumsSum += ivar * idepthSource[idx + sw];
-          num++;
-        }
-        if (idepthVarSource[idx + sw + 1] > 0) {
-          let ivar = 1.0 / idepthVarSource[idx + sw + 1];
-          ivarSumsSum += ivar;
-          idepthSumsSum += ivar * idepthSource[idx + sw + 1];
-          num++;
-        }
-        if (num > 0) {
-          let depth: number = ivarSumsSum / idepthSumsSum;
-          idepthDest[idxDest] = 1.0 / depth;
-          idepthVarDest[idxDest] = num / ivarSumsSum;
-        } else {
-          idepthDest[idxDest] = -1;
-          idepthVarDest[idxDest] = -1;
-        }
+      // Set global statistics from level 0 only
+      if (lvl === 0) {
+        this.meanIdepth = levelNumPoints > 0 ? levelSumIdepth / levelNumPoints : 0;
+        this.numPoints = levelNumPoints;
+        this.IDepthSet = true;
       }
+
+      // Chain buffers for next pyramid level
+      idepthSrc = idepthDst;
+      ivarSrc = ivarDst;
+      srcW = width;
     }
   }
 
@@ -214,36 +215,5 @@ export class Frame {
       }
     }
     return imageArrayDst;
-  }
-
-  /**
-   * Create 3D points from inverse depth values and count valid points
-   */
-  #createPointCloud() {
-    for (let level = 0; level < Constants.PYRAMID_LEVELS; level++) {
-      const width: number = this.width(level);
-      const height: number = this.height(level);
-      const image: Float32Array = this.imageArrayLvl[level];
-      const inverseDepth: Float32Array = this.inverseDepthLvl[level];
-      const inverseDepthVariance: Float32Array = this.inverseDepthVarianceLvl[level];
-      const fxInv: number = Constants.fxInv[level];
-      const fyInv: number = Constants.fyInv[level];
-      const cxInv: number = Constants.cxInv[level];
-      const cyInv: number = Constants.cyInv[level];
-      const posData = [];
-      const colorAndVarData = [];
-      for (let x: number = 0; x < width; x++) {
-        for (let y: number = 0; y < height; y++) {
-          const idx: number = x + y * width;
-          const idepth: number = inverseDepth[idx];
-          const vrb: number = inverseDepthVariance[idx];
-          if (idepth == 0 || vrb <= 0) continue;
-          posData.push([(fxInv * x + cxInv) / idepth, (fyInv * y + cyInv) / idepth, 1 / idepth]);
-          colorAndVarData.push([image[idx], vrb])
-        }
-      }
-      this.posDataLvl[level] = posData
-      this.colorAndVarData[level] = colorAndVarData
-    }
   }
 }

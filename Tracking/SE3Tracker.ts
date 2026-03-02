@@ -74,9 +74,8 @@ export class SE3Tracker {
 
     // For each pyramid level, coarse to fine
     for (let level = Constants.SE3TRACKING_MAX_LEVEL - 1; level >= Constants.SE3TRACKING_MIN_LEVEL; level -= 1) {
-      const posData = referenceFrame.posDataLvl[level]
-      const colorAndVarData = referenceFrame.colorAndVarData[level]
-      this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, refToFrame, level);
+      const posData = referenceFrame.pointCloudLvl[level]
+      this.#calculateResidualAndBuffers(posData, frame, refToFrame, level);
 
       // Diverge when amount of pixels successfully warped into new frame < some
       // amount
@@ -109,7 +108,7 @@ export class SE3Tracker {
           newRefToFrame.mulEq(refToFrame);
 
           // Re-evaluate residual
-          this.#calculateResidualAndBuffers(posData, colorAndVarData, frame, newRefToFrame, level);
+          this.#calculateResidualAndBuffers(posData, frame, newRefToFrame, level);
 
           // Check for divergence
           if (this.warpedCount < Constants.MIN_GOODPERALL_PIXEL_ABSMIN * frame.width(level)
@@ -193,7 +192,7 @@ export class SE3Tracker {
    * @return sum of un-weighted residuals, divided by good pixel count.
    *
    */
-  #calculateResidualAndBuffers(posData: Array<Array<number>>, colorAndVarData: Array<Array<number>>, frame: Frame,
+  #calculateResidualAndBuffers(posData: Array<[number, number, number, number, number]>, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
     this.calculateResidualAndBuffersCount++;
@@ -218,7 +217,7 @@ export class SE3Tracker {
     // For each point in point cloud
     for (let i = 0; i < posData.length; i++) {
       // 3D position
-      let point = posData[i];
+      let point: [number, number, number, number, number] = posData[i];
 
       numValidPoints++;
 
@@ -243,7 +242,7 @@ export class SE3Tracker {
       let interpolatedGradientY: number = Vec.interpolatedValue(frame.imageGradientYArrayLvl[level], u, v,
         frame.width(level));
 
-      let residual: number = colorAndVarData[i][0] - interpolatedIntensity;
+      let residual: number = point[3] - interpolatedIntensity;
       let squaredResidual: number = residual * residual;
 
       // Set buffers
@@ -256,7 +255,7 @@ export class SE3Tracker {
       this.bufWarpedY[this.warpedCount] = warpedPoint[1];
       this.bufWarpedZ[this.warpedCount] = warpedPoint[2];
       this.bufInvDepth[this.warpedCount] = (1.0 / point[2]);
-      this.bufInvDepthVariance[this.warpedCount] = colorAndVarData[i][1];
+      this.bufInvDepthVariance[this.warpedCount] = point[4];
 
       // Increase warpCount
       this.warpedCount += 1;
