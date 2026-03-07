@@ -55,11 +55,9 @@ export class SIM3 {
   public mul(sim3?: any): any {
     if (sim3 instanceof SIM3) {
       return this.multiply(sim3);
-    } else if (Array.isArray(sim3) && sim3.length === 3) {
-      return this.mulFloat(sim3 as Array<number>);
-    } else {
-      throw new Error(`SIM3.mul: invalid argument type ${typeof sim3}`);
-    }
+    } else if (sim3 instanceof Array) {
+      return this.mulFloat(sim3);
+    } else throw new Error('invalid overload');
   }
 
   public mulFloat(point: Array<number>): Array<number> {

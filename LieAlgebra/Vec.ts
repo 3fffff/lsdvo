@@ -10,9 +10,9 @@ export class Vec {
 
   public static invert(a: Array<number>, len: number): Array<number> {
     let n: number = len;
-    let x = Array(n * n).fill(0);
-    let b = Array(n * n).fill(0);
-    let index = Array(n).fill(0);
+    let x: Array<number> = new Array<number>(n * n).fill(0);
+    let b: Array<number> = new Array<number>(n * n).fill(0);
+    let index: Array<number> = new Array<number>(n).fill(0);
     for (let i: number = 0; i < n; ++i) b[i * n + i] = 1;
     Vec.gaussian(a, index);
     for (let i: number = 0; i < n - 1; ++i)
@@ -33,7 +33,7 @@ export class Vec {
 
   static gaussian(a: Array<number>, index: Array<number>) {
     let n: number = index.length;
-    let c = Array(n).fill(0);
+    let c: Array<number> = new Array<number>(n).fill(0);
     for (let i: number = 0; i < n; ++i) { index[i] = i; }
     for (let i: number = 0; i < n; ++i) {
       let c1: number = 0;
@@ -81,13 +81,13 @@ export class Vec {
   }
 
   public static scalarMul2(vec0: Array<number>, s: number): Array<number> {
-    let result: Array<number> = new Array<number>(vec0.length).fill(0);
+    let result: Array<number> = Array(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] * s;
     return result;
   }
 
   public static vecAdd2(vec0: Array<number>, vec1: Array<number>): Array<number> {
-    let result: Array<number> = new Array<number>(vec0.length).fill(0);
+    let result: Array<number> = Array(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] + vec1[i];
     return result;
   }
@@ -97,7 +97,7 @@ export class Vec {
   }
 
   public static vecMinus2(vec0: Array<number>, vec1: Array<number>): Array<number> {
-    let result: Array<number> = new Array<number>(vec0.length).fill(0);
+    let result: Array<number> = Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] - vec1[i];
     return result;
   }
@@ -106,14 +106,14 @@ export class Vec {
     Vec.scalarMult(vec, 1.0 / Vec.magnitude(vec));
   }
 
-  public static getCol(vec7: Array<number>, col: number, len: number): Array<number> {
-    let result: Array<number> = new Array<number>(len).fill(0);
-    for (let i: number = 0; i < len; i++)  result[i] = vec7[i * len + col];
+  public static getCol(vec7: Array<number>, row: number, len: number): Array<number> {
+    let result: Array<number> = Array<number>(len).fill(0);
+    for (let i: number = 0; i < len; i++)  result[i] = vec7[i * len + row];
     return result;
   }
 
   public static getRow(vec7: Array<number>, row: number, len: number): Array<number> {
-    let result: Array<number> = new Array<number>(len).fill(0);
+    let result: Array<number> = Array<number>(len).fill(0);
     for (let i: number = 0; i < len; i++)  result[i] = vec7[row * len + i];
     return result;
   }
@@ -124,13 +124,12 @@ export class Vec {
 
   public static multMatrix(A: Array<number>, B: Array<number>, aRows: number, aColumns: number, bRows: number, bColumns: number): Array<number> {
     if (aColumns !== bRows) throw new Error("A columns must match B rows");
-    let C: Array<number> = new Array<number>(aRows * bColumns).fill(0);
+    let C: Array<number> = Array<number>(aRows * bColumns).fill(0);
     for (let i = 0; i < aRows; i++) {
       for (let j = 0; j < bColumns; j++) {
         let sum = 0;
-        for (let k = 0; k < aColumns; k++) {
+        for (let k = 0; k < aColumns; k++)
           sum += A[i * aColumns + k] * B[k * bColumns + j];
-        }
         C[i * bColumns + j] = sum;
       }
     }
@@ -138,7 +137,7 @@ export class Vec {
   }
 
   static matrixTranspose(A: Array<number>, len: number): Array<number> {
-    let result: Array<number> = new Array<number>(len * len).fill(0);
+    let result: Array<number> = Array<number>(len * len).fill(0);
     for (let i: number = 0; i < len; i++)
       for (let j: number = 0; j < len; j++)
         result[j * len + i] = A[i * len + j];
@@ -146,13 +145,13 @@ export class Vec {
   }
 
   static matrixEye(vol: number): Array<number> {
-    let result: Array<number> = new Array<number>(vol * vol).fill(0);
+    let result: Array<number> = Array(vol * vol).fill(0);
     for (let j: number = 0; j < vol; j++) result[j * vol + j] = 1;
     return result;
   }
 
   public static matrixMul(A: Array<number>, s: number): Array<number> {
-    let result: Array<number> = new Array<number>(A.length).fill(0);
+    let result: Array<number> = Array<number>(A.length).fill(0);
     for (let i: number = 0; i < A.length; i++)  result[i] = A[i] * s;
     return result;
   }
@@ -161,7 +160,7 @@ export class Vec {
     for (let i: number = 0; i < A.length; i++)  A[i] = A[i] + B[i];
   }
   public static matrixAdd2(A: Array<number>, B: Array<number>): Array<number> {
-    let result: Array<number> = new Array<number>(A.length).fill(0);
+    let result: Array<number> = Array<number>(A.length).fill(0);
     for (let i: number = 0; i < A.length; i++)  result[i] = A[i] + B[i];
     return result;
   }
@@ -174,13 +173,13 @@ export class Vec {
   }
 
   public static vectorDiv(vec0: Array<number>, s: number): Array<number> {
-    let result: Array<number> = new Array<number>(vec0.length).fill(0);
+    let result: Array<number> = Array<number>(vec0.length).fill(0);
     for (let i: number = 0; i < vec0.length; i++)  result[i] = vec0[i] / s;
     return result;
   }
 
   public static matVecMultiplySqr(matrix: Array<number>, vector: Array<number>, rows: number): Array<number> {
-    let result: Array<number> = new Array<number>(rows).fill(0);
+    let result: Array<number> = Array<number>(rows).fill(0);
     for (let row: number = 0; row < rows; row++) {
       let sum: number = 0;
       for (let column: number = 0; column < rows; column++)  sum += matrix[row * rows + column] * vector[column];
@@ -190,7 +189,7 @@ export class Vec {
   }
 
   public static vecTransMul(a: Array<number>, b: Array<number>): Array<number> {
-    let result: Array<number> = new Array<number>(a.length * b.length).fill(0);
+    let result: Array<number> = Array<number>(a.length * b.length).fill(0);
     for (let i: number = 0; i < a.length; i++)
       for (let j: number = 0; j < b.length; j++)
         result[a.length * i + j] = a[i] * b[j];
@@ -202,8 +201,8 @@ export class Vec {
   }
 
   public static interpolatedValue(dataArray: Float32Array, x: number, y: number, width: number): number {
-    const ix: number = ~~x;
-    const iy: number = ~~y;
+    const ix: number = Math.floor(x);
+    const iy: number = Math.floor(y);
     const dx: number = x - ix;
     const dy: number = y - iy;
     const dxdy: number = dx * dy;

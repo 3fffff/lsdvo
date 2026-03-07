@@ -6,7 +6,8 @@
   "browser": ".\\dist\\lsdvo.min.js",
   "scripts": {
     "devbuild": "tsc && .\\node_modules\\.bin\\esbuild .\\dist\\index.js --bundle --outfile=dist\\debug.js --global-name=LSD --minify --sourcemap",
-    "build": "tsc && .\\node_modules\\.bin\\esbuild index.js --bundle --outfile=dist\\bundle.js --global-name=LSD --minify"
+    "build": "tsc && .\\node_modules\\.bin\\esbuild index.js --bundle --outfile=dist\\bundle.js --global-name=LSD --minify",
+    "testSE3": "npx tsc && node dist\\LieAlgebra\\tests\\SE3.test.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
     "esbuild": "^0.27.3"
   },
   "dependencies": {
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "uvu": "^0.5.6"
   }
 }

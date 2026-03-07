@@ -14,7 +14,7 @@ export class Constants {
   static MIN_USE_GRAD: number = 5;
   public static MIN_ABS_GRAD_CREATE: number = Constants.MIN_USE_GRAD;
   public static MIN_ABS_GRAD_DECREASE: number = Constants.MIN_USE_GRAD;
-    /** ============== Depth Variance Handling ======================= */
+  /** ============== Depth Variance Handling ======================= */
   static SUCC_VAR_INC_FAC: number = (1.01); // before an
   // ekf-update, the variance is increased by this factor.
   static FAIL_VAR_INC_FAC: number = 1.1; // after a failed stereo observation, the
@@ -125,9 +125,8 @@ export class Constants {
       const depth: number = 1 / idepth;
       let depth4: number = depth * depth * depth * depth;
       // Skip if depth/variance is not valid
-      if (var1 * depth4 > scaledTH || var1 * depth4 > absTH)
-        continue;
-      posData.push(keyframe.camToWorld.mulFloat(keyframe.pointCloudLvl[level][i]));
+      if (var1 * depth4 < scaledTH && var1 * depth4 < absTH)
+        posData.push(keyframe.camToWorld.mulFloat(keyframe.pointCloudLvl[level][i]));
     }
     return posData
   }

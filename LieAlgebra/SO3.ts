@@ -8,9 +8,9 @@ export class SO3 {
     if (mat33 != null && mat33 instanceof Array) {
       this.set33(mat33);
     } else if ((mat33 != null && mat33 instanceof SO3)) {
-      let args = arguments;
-      let rotation: any = args[0];
-      this.matrix = rotation.matrix.slice();
+      let __args = arguments;
+      let rotation: any = __args[0];
+      this.matrix = rotation.matrix;
     } else {
       this.matrix = Vec.matrixEye(3);
     }
@@ -36,12 +36,17 @@ export class SO3 {
     let A: number;
     let B: number;
     if (theta_sq < 1.0E-12) {
-      B = 0.5 - 0.25 * one_6th * theta_sq;
-      A = 1.0 - theta_sq * one_6th * (1.0 - one_20th * theta_sq);
+      A = 1.0 - one_6th * theta_sq;
+      B = 0.5;
     } else {
-      let inv_theta: number = 1.0 / theta;
-      A = Math.sin(theta) * inv_theta;
-      B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
+      if (theta_sq < 1.0E-12) {
+        B = 0.5 - 0.25 * one_6th * theta_sq;
+        A = 1.0 - theta_sq * one_6th * (1.0 - one_20th * theta_sq);
+      } else {
+        let inv_theta: number = 1.0 / theta;
+        A = Math.sin(theta) * inv_theta;
+        B = (1.0 - Math.cos(theta)) * (inv_theta * inv_theta);
+      }
     }
     let result: Array<number> = SO3.rodrigues_so3_exp(vec3, A, B);
     return result;
@@ -52,9 +57,9 @@ export class SO3 {
    */
   public static rodrigues_so3_exp(w: Array<number>, A: number, B: number): Array<number> {
     let R: Array<number> = new Array<number>(3 * 3).fill(0);
-    let wx2: number = w[0] * w[0];
-    let wy2: number = w[1] * w[1];
-    let wz2: number = w[2] * w[2];
+    let wx2: number = <number>w[0] * w[0];
+    let wy2: number = <number>w[1] * w[1];
+    let wz2: number = <number>w[2] * w[2];
     R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
     R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
     R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);
@@ -149,9 +154,7 @@ export class SO3 {
     Vec.vecMinus(vec2, Vec.cross(vec0, Vec.cross(vec0, vec2)));
     Vec.vecMinus(vec2, Vec.cross(vec1, Vec.cross(vec1, vec2)));
     Vec.unit(vec2);
-    const handedness = Vec.dot(Vec.cross(vec0, vec1), vec2);
-    if (handedness <= 0)
-      vec2 = Vec.scalarMul2(vec2, -1); // flip to enforce right-handed
+    if (!((Vec.dot(Vec.cross(vec0, vec1), vec2) > 0))) throw new Error("(Vec.dot(Vec.cross(vec0, vec1), vec2) > 0);");
     Vec.setRow(this.matrix, vec0, 0);
     Vec.setRow(this.matrix, vec1, 1);
     Vec.setRow(this.matrix, vec2, 2);

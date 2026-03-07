@@ -2,6 +2,7 @@ import { Constants } from '../Utils/Constants';
 import { DepthMapPixelHypothesis } from '../DepthEstimation/DepthMapPixelHypothesis';
 import { SE3 } from '../LieAlgebra/SE3';
 
+export type PointData = [x: number, y: number, z: number, intensity: number, variance: number];
 export class Frame {
   #width: number = 0;
   #height: number = 0;
@@ -11,7 +12,7 @@ export class Frame {
   public imageGradientXArrayLvl: Array<Float32Array>;
   public imageGradientYArrayLvl: Array<Float32Array>;
   public imageGradientMaxArrayLvl: Array<Float32Array>;
-  public pointCloudLvl: Array<Array<[number, number, number, number, number]>>;
+  public pointCloudLvl: Array<Array<PointData>>;
   public IDepthSet: boolean = false;
   public numMappablePixels = 0
   public initialTrackedResidual: number = 0;
@@ -28,12 +29,12 @@ export class Frame {
    * Clear unused data to reduce memory usage
    */
   public clearData() {
-    this.imageGradientXArrayLvl.length = 0;
-    this.imageGradientYArrayLvl.length = 0;
-    this.pointCloudLvl.length = 0;
+    this.imageGradientXArrayLvl = [];
+    this.imageGradientYArrayLvl = [];
     if (!this.isKF) {
-      this.imageGradientMaxArrayLvl.length = 0;
-      this.imageArrayLvl.length = 0;
+      this.imageGradientMaxArrayLvl = [];
+      this.imageArrayLvl = [];
+      this.pointCloudLvl = [];
     }
   }
 
@@ -102,10 +103,9 @@ export class Frame {
     return this.#height >> level;
   }
 
-  public setDepth(newDepth: Array<DepthMapPixelHypothesis>): void {
-
-    let idepthSrc: Float32Array | undefined;
-    let ivarSrc: Float32Array | undefined;
+  public createPointCloud(newDepth: Array<DepthMapPixelHypothesis>): void {
+    let idepthSrc: Float32Array;
+    let ivarSrc: Float32Array;
     let srcW = 0;
 
     for (let lvl = 0; lvl < Constants.PYRAMID_LEVELS; lvl++) {
@@ -114,9 +114,9 @@ export class Frame {
       const pixels = width * height;
       const imageLvl = this.imageArrayLvl[lvl];
 
-      const idepthDst = new Float32Array(pixels);
-      const ivarDst = new Float32Array(pixels);
-      const posData: Array<[number, number, number, number, number]> = [];
+      const idepthDst = new Float32Array(pixels).fill(-1);
+      const ivarDst = new Float32Array(pixels).fill(-1);
+      const posData: Array<PointData> = [];
 
       let levelNumPoints = 0;
       let levelSumIdepth = 0;
@@ -173,14 +173,8 @@ export class Frame {
             const depth = 1.0 / idepth;
             posData.push([
               (Constants.fxInv[lvl] * x + Constants.cxInv[lvl]) * depth,
-              cyTerm * depth,
-              depth,
-              imageLvl[dstIdx],
-              ivar
+              cyTerm * depth, depth, imageLvl[dstIdx], ivar
             ]);
-          } else {
-            idepthDst[dstIdx] = -1;
-            ivarDst[dstIdx] = -1;
           }
         }
       }

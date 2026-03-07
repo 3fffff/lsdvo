@@ -1,20 +1,20 @@
 import { Constants } from "../Utils/Constants";
-import { Frame } from "../DataStructures/Frame";
+import { Frame, PointData } from "../DataStructures/Frame";
 import { SE3 } from "../LieAlgebra/SE3";
 import { Vec } from "../LieAlgebra/Vec";
 
 export class SE3Tracker {
   // Settings variables
-  static maxItsPerLvl = [5, 20, 50, 100, 100];
-  static stepSizeMin = [1e-8, 1e-8, 1e-8, 1e-8, 1e-8];
-  lambdaInitial = [0.01, 0.01, 0.01, 0.01, 0.01];
-  convergenceEps = [0.999, 0.999, 0.999, 0.999, 0.999];
+  maxItsPerLvl: Float32Array = new Float32Array([5, 20, 50, 100, 100]);
+  lambdaInitial: Float32Array;
+  convergenceEps: Float32Array;
   varWeight: number = 1.0;
   huberD: number = 3.0;
   cameraPixelNoise2: number = 4 * 4;
 
   lambdaSuccessFac: number = 0.5;
   lambdaFailFac: number = 2.0;
+  stepSizeMin: Float32Array = new Float32Array([1e-8, 1e-8, 1e-8, 1e-8, 1e-8]);
 
   // Variables set when tracking
   warpedCount: number = 0; // Number of pixels warped into new image bounds
@@ -43,6 +43,12 @@ export class SE3Tracker {
   calculateResidualAndBuffersCount: number = 0;
 
   constructor(width: number, height: number) {
+    // Set lambdaInitial values to 0
+    this.lambdaInitial = new Float32Array(Constants.PYRAMID_LEVELS);
+    // Set convergence epsilon
+    this.convergenceEps = new Float32Array(Constants.PYRAMID_LEVELS);
+    for (let i: number = 0; i < this.convergenceEps.length; i++)
+      this.convergenceEps[i] = 0.999
     // Create buffer arrays
     let size: number = width * height;
     this.bufWarpedResidual = new Float32Array(size);
@@ -92,7 +98,7 @@ export class SE3Tracker {
       let LM_lambda: number = this.lambdaInitial[level];
 
       // For a maximum number of iterations
-      for (let iteration = 0; iteration < SE3Tracker.maxItsPerLvl[level]; iteration++) {
+      for (let iteration = 0; iteration < this.maxItsPerLvl[level]; iteration++) {
         // Calculate/update LS
         let [A, b] = this.#calculateWarpUpdate();
 
@@ -129,7 +135,7 @@ export class SE3Tracker {
             // Check for convergence
             if (error / lastError > this.convergenceEps[level]) {
               // Stop iteration
-              iteration = SE3Tracker.maxItsPerLvl[level];
+              iteration = this.maxItsPerLvl[level];
             }
             lastError = error;
             lastResidual = error;
@@ -143,9 +149,9 @@ export class SE3Tracker {
             break;
           } else {
             let incVecDot: number = Vec.dot(inc, inc);
-            if (!(incVecDot > SE3Tracker.stepSizeMin[level])) {
+            if (!(incVecDot > this.stepSizeMin[level])) {
               // Stop iteration
-              iteration = SE3Tracker.maxItsPerLvl[level];
+              iteration = this.maxItsPerLvl[level];
               // console.log("Step size below min");
               break;
             }
@@ -192,7 +198,7 @@ export class SE3Tracker {
    * @return sum of un-weighted residuals, divided by good pixel count.
    *
    */
-  #calculateResidualAndBuffers(posData: Array<[number, number, number, number, number]>, frame: Frame,
+  #calculateResidualAndBuffers(posData: Array<PointData>, frame: Frame,
     frameToRefPose: SE3, level: number): number {
 
     this.calculateResidualAndBuffersCount++;
@@ -217,12 +223,14 @@ export class SE3Tracker {
     // For each point in point cloud
     for (let i = 0; i < posData.length; i++) {
       // 3D position
-      let point: [number, number, number, number, number] = posData[i];
+      let point = posData[i];
 
-      numValidPoints++;
-
+      // Skip if point is not valid
+      if (!point) continue;
+      else numValidPoints++;
+      let p = [point[0], point[1], point[2]]
       // Warp to 2D image by estimate
-      let warpedPoint = Vec.vecAdd2(Vec.matVecMultiplySqr(rotationMat, point, 3), translationVec);
+      let warpedPoint = Vec.vecAdd2(Vec.matVecMultiplySqr(rotationMat, p, 3), translationVec);
 
       // Image points
       let u: number = (warpedPoint[0] / warpedPoint[2]) * fx + cx;
@@ -242,7 +250,7 @@ export class SE3Tracker {
       let interpolatedGradientY: number = Vec.interpolatedValue(frame.imageGradientYArrayLvl[level], u, v,
         frame.width(level));
 
-      let residual: number = point[3] - interpolatedIntensity;
+      let residual: number = posData[i][3] - interpolatedIntensity;
       let squaredResidual: number = residual * residual;
 
       // Set buffers
@@ -255,7 +263,7 @@ export class SE3Tracker {
       this.bufWarpedY[this.warpedCount] = warpedPoint[1];
       this.bufWarpedZ[this.warpedCount] = warpedPoint[2];
       this.bufInvDepth[this.warpedCount] = (1.0 / point[2]);
-      this.bufInvDepthVariance[this.warpedCount] = point[4];
+      this.bufInvDepthVariance[this.warpedCount] = posData[i][4];
 
       // Increase warpCount
       this.warpedCount += 1;
@@ -326,7 +334,7 @@ export class SE3Tracker {
 
   #calculateWarpUpdate(): [Array<number>, Array<number>] {
     const A = Array(36).fill(0);
-    const b = Array(6).fill(0)
+    const b = Array(6).fill(0);
     //let error = 0;
     // For each warped pixel
     for (let i = 0; i < this.warpedCount; i++) {
