@@ -6,23 +6,14 @@ export class SO3 {
 
   public constructor(mat33?: any) {
     if (mat33 != null && mat33 instanceof Array) {
-      this.set33(mat33);
+      this.matrix = mat33;
+      this.coerce();
     } else if ((mat33 != null && mat33 instanceof SO3)) {
-      let __args = arguments;
-      let rotation: any = __args[0];
+      let rotation: any = arguments[0];
       this.matrix = rotation.matrix;
     } else {
       this.matrix = Vec.matrixEye(3);
     }
-  }
-
-  public set31(vec3: Array<number>) {
-    this.set33(SO3.exp(vec3));
-  }
-
-  public set33(mat33: Array<number>) {
-    this.matrix = mat33;
-    this.coerce();
   }
 
   /**
@@ -57,9 +48,9 @@ export class SO3 {
    */
   public static rodrigues_so3_exp(w: Array<number>, A: number, B: number): Array<number> {
     let R: Array<number> = new Array<number>(3 * 3).fill(0);
-    let wx2: number = <number>w[0] * w[0];
-    let wy2: number = <number>w[1] * w[1];
-    let wz2: number = <number>w[2] * w[2];
+    let wx2: number = w[0] * w[0];
+    let wy2: number = w[1] * w[1];
+    let wz2: number = w[2] * w[2];
     R[0 * 3 + 0] = 1.0 - B * (wy2 + wz2);
     R[1 * 3 + 1] = 1.0 - B * (wx2 + wz2);
     R[2 * 3 + 2] = 1.0 - B * (wx2 + wy2);

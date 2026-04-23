@@ -5,7 +5,7 @@ import { Vec } from "./Vec";
 export class SIM3 {
   public se3: SE3;
 
-  public scale: number = 1;
+  public scale: number = 0;
 
   public constructor(se3?: any, scale?: any) {
     if (se3 != null && se3 instanceof SE3) {

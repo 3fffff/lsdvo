@@ -11,6 +11,16 @@ import { TestDepth } from "./TestDepth";
  */
 export class DepthMap {
 
+  /** ============== Depth Variance Handling ======================= */
+  static SUCC_VAR_INC_FAC: number = (1.01); // before an
+  // ekf-update, the variance is increased by this factor.
+  static FAIL_VAR_INC_FAC: number = 1.1; // after a failed stereo observation, the
+  // variance is increased by this factor.
+  static MAX_VAR: number = (0.5 * 0.5); // initial variance on
+  // creation - if variance becomeslarger than this, hypothesis is removed.
+  static VAR_RANDOM_INIT_INITIAL: number = (0.5 * DepthMap.MAX_VAR); // initial
+  // variance for Random Initialization
+
   width: number;
   height: number;
 
@@ -20,12 +30,19 @@ export class DepthMap {
 
   activeKeyFrame: Frame;
 
+  //oldest_referenceFrame: Frame;
   referenceFrame: Frame;
+  //referenceFrameByID: Array<Frame>;
+  //referenceFrameByID_offset: number;
 
   // Camera matrix
   fx: number; fy: number; cx: number; cy: number;
   fxi: number; fyi: number; cxi: number; cyi: number;
-  refToKf: SE3
+  K_otherToThis_R: Array<number>;
+  K_otherToThis_t: Array<number>;
+  otherToThis_t: Array<number>;
+  thisToOther_R: Array<number>;
+  thisToOther_t: Array<number>;
   debugDepth: TestDepth | null;
 
   constructor(w: number, h: number, debug: boolean) {
@@ -79,8 +96,13 @@ export class DepthMap {
           // let idepth = 0.5f + 1.0f * 0.5f;
 
           // Set hypothesis, random idepth and initial variance.
-          this.currentDepthMap[x + y * this.width] = new DepthMapPixelHypothesis(idepth, idepth,
-            Constants.VAR_RANDOM_INIT_INITIAL, Constants.VAR_RANDOM_INIT_INITIAL, 20);
+          this.currentDepthMap[x + y * this.width].copyFromVal(
+            idepth,
+            Constants.VAR_RANDOM_INIT_INITIAL,
+            20,
+            idepth,
+            Constants.VAR_RANDOM_INIT_INITIAL
+          );
           goodGrad++;
         } else {
           // Mark as invalid
@@ -100,8 +122,19 @@ export class DepthMap {
   public updateKeyframe(frame: Frame) {
     this.isValid()
 
+    // Get oldest/newest frames
+    //  this.oldest_referenceFrame = referenceFrames[referenceFrames.length - 1];
     this.referenceFrame = frame
 
+    // this.referenceFrameByID = [];
+    // this.referenceFrameByID_offset = this.oldest_referenceFrame.id;
+
+    // For each frame
+    // console.log("Updating keyframe " + activeKeyFrame.id + " with " +
+    // frame.id + ".");
+
+    // Checks that tracking parent is valid
+    //		assert (frame.id != 0);
     if (frame.kfID != this.activeKeyFrame.id) {
       console.log(
         "WARNING: updating frame %d with %d," + " which was tracked on a different frame (%d)."
@@ -109,7 +142,25 @@ export class DepthMap {
         this.activeKeyFrame.id, frame.id, frame.kfID);
     }
 
-    this.refToKf = this.activeKeyFrame.id === 0 ? frame.thisToParent : this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
+    let refToKf: SE3;
+    // Get SIM3 from frame to keyframe
+    if (this.activeKeyFrame.id === 0) {
+      refToKf = frame.thisToParent;
+    } else {
+      refToKf = this.activeKeyFrame.camToWorld.inverse().mulSE3(frame.camToWorld);
+    }
+
+    // prepare frame for stereo with keyframe, SE3, K, level
+    //frame.prepareForStereoWith(refToKf);
+
+    let otherToThis: SE3 = refToKf.inverse();
+
+    this.K_otherToThis_R = Vec.multMatrix(Constants.K[0], otherToThis.getRotationMatrix(), 3, 3, 3, 3);
+    this.otherToThis_t = otherToThis.getTranslation();
+    this.K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], this.otherToThis_t, 3);
+
+    this.thisToOther_t = refToKf.getTranslation();
+    this.thisToOther_R = refToKf.getRotationMatrix();
 
     // *** OBSERVE DEPTH HERE
     this.observeDepth();
@@ -211,7 +262,7 @@ export class DepthMap {
     }
 
     result_idepth = this.UNZERO(result_idepth);
-    this.currentDepthMap[idx] = new DepthMapPixelHypothesis(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
+    this.currentDepthMap[idx].copyFromVal(result_idepth, result_var, Constants.VALIDITY_COUNTER_INITIAL_OBSERVE);
     return true;
   }
 
@@ -269,7 +320,7 @@ export class DepthMap {
       if (target.validity_counter < 0)
         target.validity_counter = 0;
 
-      target.idepth_var *= Constants.FAIL_VAR_INC_FAC;
+      target.idepth_var *= DepthMap.FAIL_VAR_INC_FAC;
       if (target.idepth_var > Constants.MAX_VAR) {
         target.isValid = false;
         target.blacklisted--;
@@ -282,7 +333,7 @@ export class DepthMap {
       return false;
     } else if (Constants.DIFF_FAC_OBSERVE * diff * diff > result_var + target.idepth_var_smoothed) {
       // if inconsistent
-      target.idepth_var *= Constants.FAIL_VAR_INC_FAC;
+      target.idepth_var *= DepthMap.FAIL_VAR_INC_FAC;
       if (target.idepth_var > Constants.MAX_VAR)
         target.isValid = false;
 
@@ -292,7 +343,7 @@ export class DepthMap {
 
       // do textbook ekf update:
       // increase var by a little (prediction-uncertainty)
-      let id_var: number = target.idepth_var * Constants.SUCC_VAR_INC_FAC;
+      let id_var: number = target.idepth_var * DepthMap.SUCC_VAR_INC_FAC;
 
       // update var with observation
       let w: number = result_var / (result_var + id_var);
@@ -336,8 +387,8 @@ export class DepthMap {
  */
   makeAndCheckEPL(x: number, y: number): Float32Array | null {
     const idx = x + y * this.width;
-    const epx = -this.fx * this.refToKf.getTranslation()[0] + this.refToKf.getTranslation()[2] * (x - this.cx);
-    const epy = -this.fy * this.refToKf.getTranslation()[1] + this.refToKf.getTranslation()[2] * (y - this.cy);
+    const epx = -this.fx * this.thisToOther_t[0] + this.thisToOther_t[2] * (x - this.cx);
+    const epy = -this.fy * this.thisToOther_t[1] + this.thisToOther_t[2] * (y - this.cy);
     if (isNaN(epx + epy)) return null;
 
     const eplLengthSquared = epx * epx + epy * epy;
@@ -372,13 +423,10 @@ export class DepthMap {
     max_idepth: number, referenceFrame: Frame, referenceFrameImage: Float32Array, result_idepth: number, result_var: number,
     result_eplLength: number): Array<number> {
 
-    const inverseRefToKF = this.refToKf.inverse();
-    const K_otherToThis_t = Vec.matVecMultiplySqr(Constants.K[0], inverseRefToKF.getTranslation(), 3);
     // calculate epipolar line start and end point in old image
-    let KinvP: [number, number, number] = [this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0];
-    const K_refToKF = Vec.multMatrix(Constants.K[0], inverseRefToKF.getRotationMatrix(), 3, 3, 3, 3);
-    let pInf = Vec.matVecMultiplySqr(K_refToKF, KinvP, 3);
-    let pReal = Vec.vecAdd2(Vec.vectorDiv(pInf, prior_idepth), K_otherToThis_t);
+    let KinvP = [this.fxi * u + this.cxi, this.fyi * v + this.cyi, 1.0];
+    let pInf = Vec.matVecMultiplySqr(this.K_otherToThis_R, KinvP, 3);
+    let pReal = Vec.vecAdd2(Vec.vectorDiv(pInf, prior_idepth), this.K_otherToThis_t);
 
     let rescaleFactor: number = (pReal[2] * prior_idepth);
 
@@ -411,18 +459,17 @@ export class DepthMap {
     let realVal_p2: number = Vec.interpolatedValue(activeKeyFrameImageData, u + 2 * epxn * rescaleFactor,
       v + 2 * epyn * rescaleFactor, this.width);
 
-
-    let pClose = Vec.vecAdd2(pInf, Vec.scalarMul2(K_otherToThis_t, max_idepth));
+    let pClose = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, max_idepth));
     // if the assumed close-point lies behind the
     // image, have to change that.
     if (pClose[2] < 0.001) {
-      max_idepth = ((0.001 - pInf[2]) / K_otherToThis_t[2]);
-      pClose = Vec.vecAdd2(Vec.scalarMul2(K_otherToThis_t, max_idepth), pInf);
+      max_idepth = ((0.001 - pInf[2]) / this.K_otherToThis_t[2]);
+      pClose = Vec.vecAdd2(Vec.scalarMul2(this.K_otherToThis_t, max_idepth), pInf);
     }
     pClose = Vec.vectorDiv(pClose, pClose[2]); // pos in new image of point
     // (xy), assuming max_idepth
 
-    let pFar = Vec.vecAdd2(pInf, Vec.scalarMul2(K_otherToThis_t, min_idepth));
+    let pFar = Vec.vecAdd2(pInf, Vec.scalarMul2(this.K_otherToThis_t, min_idepth));
     // if the assumed far-point lies behind the image or closter than the
     // near-point,
     // we moved past the Point it and should stop.
@@ -754,34 +801,33 @@ export class DepthMap {
     // search for, in the KF.
     // * best_match_x = x-coordinate of found correspondence in the
     // reference frame.
-    const [xTrans, yTrans, zTrans] = this.refToKf.inverse().getTranslation();
-    const rotation = this.refToKf.getRotationMatrix()
+
     let idnew_best_match: number; // depth in the new image
     let alpha: number; // d(idnew_best_match) / d(disparity in pixel) == conputed
     // inverse depth derived by the pixel-disparity.
     if (incx * incx > incy * incy) {
-      const matchInvX = this.fxi * best_match_x + this.cxi;
-      const baseline = matchInvX * zTrans - xTrans;
+      let oldX: number = this.fxi * best_match_x + this.cxi;
+      let nominator: number = (oldX * this.otherToThis_t[2] - this.otherToThis_t[0]);
 
-      const dot0 = KinvP[0] * rotation[0] + KinvP[1] * rotation[3] + KinvP[2] * rotation[6];
-      const dot2 = KinvP[0] * rotation[2] + KinvP[1] * rotation[5] + KinvP[2] * rotation[8];
+      let dot0: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 0, 3));
+      let dot2: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 2, 3));
 
-      idnew_best_match = (dot0 - matchInvX * dot2) / baseline;
+      idnew_best_match = (dot0 - oldX * dot2) / nominator;
       alpha = (incx * this.fxi
-        * (dot0 * zTrans - dot2 * xTrans)
-        / (baseline * baseline));
+        * (dot0 * this.otherToThis_t[2] - dot2 * this.otherToThis_t[0])
+        / (nominator * nominator));
 
     } else {
       let oldY: number = this.fyi * best_match_y + this.cyi;
 
-      let nominator: number = (oldY * zTrans - yTrans);
+      let nominator: number = (oldY * this.otherToThis_t[2] - this.otherToThis_t[1]);
 
-      const dot1 = KinvP[0] * rotation[1] + KinvP[1] * rotation[4] + KinvP[2] * rotation[7];
-      const dot2 = KinvP[0] * rotation[2] + KinvP[1] * rotation[5] + KinvP[2] * rotation[8];
+      let dot1: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 1, 3));
+      let dot2: number = Vec.dot(KinvP, Vec.getCol(this.thisToOther_R, 2, 3));
 
       idnew_best_match = (dot1 - oldY * dot2) / nominator;
       alpha = (incy * this.fyi
-        * (dot1 * zTrans - dot2 * yTrans)
+        * (dot1 * this.otherToThis_t[2] - dot2 * this.otherToThis_t[1])
         / (nominator * nominator));
 
     }
@@ -903,7 +949,7 @@ export class DepthMap {
           idepthObs = this.UNZERO(idepthObs);
 
           // Create new hypothesis
-          this.currentDepthMap[idx] = new DepthMapPixelHypothesis(idepthObs, Constants.VAR_RANDOM_INIT_INITIAL, 0);
+          this.currentDepthMap[idx].copyFromVal(idepthObs, Constants.VAR_RANDOM_INIT_INITIAL, 0);
 
         }
       }
@@ -1129,7 +1175,7 @@ export class DepthMap {
 
         if (!targetBest.isValid) {
 
-          targetBest = new DepthMapPixelHypothesis(new_idepth, new_var, source.validity_counter);
+          targetBest.copyFromVal(new_idepth, new_var, source.validity_counter);
           this.otherDepthMap[newIDX] = targetBest;
         } else {
 
@@ -1143,7 +1189,7 @@ export class DepthMap {
             merged_validity = Math.floor(Constants.VALIDITY_COUNTER_MAX
               + (Constants.VALIDITY_COUNTER_MAX_VARIABLE));
 
-          targetBest = new DepthMapPixelHypothesis(merged_new_idepth,
+          targetBest.copyFromVal(merged_new_idepth,
             1.0 / (1.0 / targetBest.idepth_var + 1.0 / new_var), merged_validity);
 
           this.otherDepthMap[newIDX] = targetBest;
